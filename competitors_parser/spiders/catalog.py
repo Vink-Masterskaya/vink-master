@@ -42,25 +42,24 @@ class CatalogSpider(scrapy.Spider):
 
     def parse_product(self, response):
         product_group = response.xpath('//*[@class="price-table pprtbl"]')
-        items = product_group.css('th::text').getall()
+        items = product_group.css('td::text').getall()
         """Парсинг карточки товаров"""
         product = []
         count = 0
         for item in items:
             count += 1
-            logger.info('item ==== %s %s', count, item)
-#            if item not in ['Наименование', 'Ед.изм.', 'Цена, руб.']:
-#            product.append(item)
-            logger.info('=============== %s', product)
-            yield {
-#                'product_code': response.css('.product-code::text').get(),
-                'name': item,
-#                'price': product[2],
-#                'stock': self.extract_stock(response.css('.stock::text').get()),
-#                'unit': product[1],
-#                'currency': 'RUB'
-            }
-            # if count == 3:
-            #     count = 0 
-            logger.info('product %s ====', product)
-            product.clear()
+#            logger.info('item ==== %s %s', count, item)
+            product.append(item)
+            if count == 3:
+                count = 0 
+                yield {
+    #                'product_code': response.css('.product-code::text').get(),
+                    'name': product[0],
+                    'price': product[2],
+    #                'stock': self.extract_stock(response.css('.stock::text').get()),
+                    'unit': product[1],
+    #                'currency': 'RUB'
+                }
+                product.clear()
+                logger.info('product %s ====', product)
+            
