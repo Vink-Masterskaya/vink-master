@@ -1,0 +1,2 @@
+main_menu = response.xpath('//*[@class="directions directions--new"]')
+categories = main_menu.css('a::attr(href)').getall()
