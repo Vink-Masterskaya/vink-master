@@ -1,21 +1,10 @@
 
 ## REMEX
 
-Основные элементы:
-1. Каталог: https://www.remex.ru/catalog
-   - Категории: .catalog-category
-   - Подкатегории: .subcategory-item
-
-2. Страница категории:
-   - Товары: .product-item
-   - Пагинация: .pagination
-
-3. Карточка товара:
-   - Артикул: .product-code
-   - Название: .product-name
-   - Цена: .price
-   - Количество: .stock
-   - Единица измерения: .unit
+Каталог: https://www.remex.ru/price
 
 scrapy crawl remex -O remex.json
 
+на сайте отсутствуют остатки на складах.
+
+почти всю спарсенную инфу (кроме  url) можно получить на сайте скачав прайс: https://www.remex.ru/images/wwwprice.xls

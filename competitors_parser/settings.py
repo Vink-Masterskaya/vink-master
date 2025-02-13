@@ -19,6 +19,11 @@ USER_AGENT = "competitors_parser (+http://www.remex.com)"
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
 
+DOWNLOADER_MIDDLEWARES = {
+#    'myproject.middlewares.NewRobotsTxtMiddleware': 100,
+    'scrapy.downloadermiddlewares.robotstxt.RobotsTxtMiddleware': None
+}
+
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
 

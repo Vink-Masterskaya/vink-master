@@ -1,39 +1,58 @@
-from .base import BaseCompetitorSpider
-from typing import Dict, Any, Generator
 import scrapy
 
-class RemexSpider(BaseCompetitorSpider):
-    name = 'remex'
-    allowed_domains = ['remex.ru']
-    start_urls = ['https://www.remex.ru/catalog']
+from ..items import CompetitorsParserItem
+
+
+class CatalogSpider(scrapy.Spider):
+    name = "catalog"
+    allowed_domains = ["remex.ru"]
+    start_urls = ["https://www.remex.ru/price"]
 
     def parse(self, response):
         """Парсинг главной страницы каталога"""
-        for category in response.css('.catalog-category'):
+        item = CompetitorsParserItem()
+        all_categoriess = response.css('a[href^="/price/"]')
+        links = all_categoriess.css('a::attr(href)').getall()
+        txts = all_categoriess.css('span::text').getall()
+        for txt, category in zip(txts, links):
+            self.logger.info('category link ==== %s %s', txt, category)
+            item['category'] = txt
+            item['url'] = f'https://www.remex.ru{category}'
             yield response.follow(
-                category.css('a::attr(href)').get(),
-                callback=self.parse_category
+                category,
+                callback=self.parse_category,
+                cb_kwargs=dict(item=item),
             )
 
-    def parse_category(self, response):
+    def parse_category(self, response, item):
         """Парсинг страницы категории"""
-        for product in response.css('.product-item'):
+        products_table = response.xpath(
+            '//*[@class="price-table price-table-images"]'
+        )
+        products = products_table.css('a::attr(href)').getall()
+        for product in products:
+            self.logger.info('product link ==== %s', product)
             yield response.follow(
-                product.css('a::attr(href)').get(),
-                callback=self.parse_product
+                product,
+                callback=self.parse_product,
+                cb_kwargs=dict(item=item),
             )
 
-        next_page = response.css('.pagination .next::attr(href)').get()
-        if next_page:
-            yield response.follow(next_page, callback=self.parse_category)
-
-    def parse_product(self, response):
-        """Парсинг карточки товара"""
-        yield {
-            'product_code': response.css('.product-code::text').get(),
-            'name': response.css('.product-name::text').get(),
-            'price': self.extract_price(response.css('.price::text').get()),
-            'stock': self.extract_stock(response.css('.stock::text').get()),
-            'unit': response.css('.unit::text').get('шт.'),
-            'currency': 'RUB'
-        }
+    def parse_product(self, response, item):
+        product_group = response.xpath('//*[@class="price-table pprtbl"]')
+        items = product_group.css('td::text').getall()
+        """Парсинг карточки товаров"""
+        product = []
+        count = 0
+        for it in items:
+            count += 1
+            product.append(it)
+            if count == 3:
+                count = 0
+                item['name'] = product[0]
+                item['unit'] = product[1]
+                item['price'] = product[2]
+                item['currency'] = 'руб.'
+                yield item
+                self.logger.info('product ==== %s', item)
+                product.clear()
