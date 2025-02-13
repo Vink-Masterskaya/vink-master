@@ -2,6 +2,8 @@ import scrapy
 
 from ..items import CompetitorsParserItem
 
+item = CompetitorsParserItem()
+
 
 class CatalogSpider(scrapy.Spider):
     name = "catalog"
@@ -10,38 +12,44 @@ class CatalogSpider(scrapy.Spider):
 
     def parse(self, response):
         """Парсинг главной страницы каталога"""
-        item = CompetitorsParserItem()
-        all_categoriess = response.css('a[href^="/price/"]')
-        links = all_categoriess.css('a::attr(href)').getall()
-        txts = all_categoriess.css('span::text').getall()
+        all_categories = response.css('a[href^="/price/"]')
+        links = all_categories.css('a::attr(href)').getall()
+        txts = all_categories.css('span::text').getall()
         for txt, category in zip(txts, links):
             self.logger.info('category link ==== %s %s', txt, category)
-            item['category'] = txt
-            item['url'] = f'https://www.remex.ru{category}'
-            yield response.follow(
-                category,
+            id = 0
+            item['id'] = id
+            request = scrapy.Request(
+                url=response.urljoin(category),
                 callback=self.parse_category,
-                cb_kwargs=dict(item=item),
             )
+            if txt == 'мобильные':
+                txt = 'мобильные стенды'
+            if txt == 'стенды':
+                txt = 'Инструменты, крепёж'
+            request.cb_kwargs["foo"] = txt
+            yield request
 
-    def parse_category(self, response, item):
+    def parse_category(self, response, foo):
         """Парсинг страницы категории"""
         products_table = response.xpath(
             '//*[@class="price-table price-table-images"]'
         )
+        self.logger.info('category ------ %s', foo)
         products = products_table.css('a::attr(href)').getall()
         for product in products:
             self.logger.info('product link ==== %s', product)
-            yield response.follow(
-                product,
+            request = scrapy.Request(
+                url=response.urljoin(product),
                 callback=self.parse_product,
-                cb_kwargs=dict(item=item),
             )
+            request.cb_kwargs["foo"] = foo
+            yield request
 
-    def parse_product(self, response, item):
+    def parse_product(self, response, foo):
+        """Парсинг карточки товаров"""
         product_group = response.xpath('//*[@class="price-table pprtbl"]')
         items = product_group.css('td::text').getall()
-        """Парсинг карточки товаров"""
         product = []
         count = 0
         for it in items:
@@ -49,10 +57,12 @@ class CatalogSpider(scrapy.Spider):
             product.append(it)
             if count == 3:
                 count = 0
+                item['category'] = foo
+                item['id'] = item['id'] + 1
+                item['url'] = response.request.url
                 item['name'] = product[0]
                 item['unit'] = product[1]
                 item['price'] = product[2]
                 item['currency'] = 'руб.'
                 yield item
-                self.logger.info('product ==== %s', item)
                 product.clear()
