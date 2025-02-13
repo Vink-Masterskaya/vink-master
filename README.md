@@ -4,6 +4,7 @@
 Каталог: https://www.remex.ru/price
 
 scrapy crawl remex -O remex.json
+scrapy crawl remex -O remex.csv
 
 на сайте отсутствуют остатки на складах.
 

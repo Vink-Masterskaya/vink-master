@@ -6,7 +6,7 @@ item = CompetitorsParserItem()
 
 
 class CatalogSpider(scrapy.Spider):
-    name = "catalog"
+    name = "remex"
     allowed_domains = ["remex.ru"]
     start_urls = ["https://www.remex.ru/price"]
 
