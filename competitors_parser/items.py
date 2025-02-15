@@ -9,3 +9,4 @@ class CompetitorsParserItem(scrapy.Item):
     price = scrapy.Field()
     currency = scrapy.Field()
     url = scrapy.Field()
+    char = scrapy.Field()
