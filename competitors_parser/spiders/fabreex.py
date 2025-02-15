@@ -28,7 +28,7 @@ class CatalogSpider(scrapy.Spider):
                 callback=self.parse_category,
             )
             request.cb_kwargs["foo"] = txt.replace(
-                '\n', '').replace('\r', '').replace('\t', '')
+                '\n', ' ').replace('\r', '').replace('\t', '')
             yield request
 
     def parse_category(self, response, foo):
@@ -50,11 +50,10 @@ class CatalogSpider(scrapy.Spider):
     def parse_product(self, response, foo):
         """Парсинг карточки товаров"""
         product = response.css('h1::text').get()
-        price = response.css('.sz-full-price-prod::text').get()
+        price = response.css('.sz-full-price-prod::text').get().strip()
         units = list(response.xpath(
             '//*[@class="uk-position-relative uk-position-z-index"]/text()'
         ).getall())[0:2]
-#            response.css('uk-position-relative uk-position-z-index').getall())
         char_key = response.xpath(
             '//*[@class="sz-text-large"]/text()'
         ).getall()
@@ -67,9 +66,10 @@ class CatalogSpider(scrapy.Spider):
         item['url'] = response.request.url
         item['name'] = product.replace(
             '\n', '').replace('\r', '').replace('\t', '').replace('₽', '')
-        item['unit'] = units
+        item['unit'] = str(units).strip()
         item['price'] = price.replace(
-            '\n', '').replace('\r', '').replace('\t', '').replace('₽', '')
+            '\n', '').replace('\r', '').replace(
+                '\t', '').replace('₽', '').strip()
         item['currency'] = 'руб.'
         item['char'] = char
         yield item
