@@ -51,8 +51,10 @@ class CatalogSpider(scrapy.Spider):
         """Парсинг карточки товаров"""
         product = response.css('h1::text').get()
         price = response.css('.sz-full-price-prod::text').get()
-        units = list(
-            response.css('uk-position-relative uk-position-z-index').getall())
+        units = list(response.xpath(
+            '//*[@class="uk-position-relative uk-position-z-index"]/text()'
+        ).getall())[0:2]
+#            response.css('uk-position-relative uk-position-z-index').getall())
         char_key = response.xpath(
             '//*[@class="sz-text-large"]/text()'
         ).getall()
@@ -69,7 +71,7 @@ class CatalogSpider(scrapy.Spider):
         item['price'] = price.replace(
             '\n', '').replace('\r', '').replace('\t', '').replace('₽', '')
         item['currency'] = 'руб.'
-        item['unit'] = char
+        item['char'] = char
         yield item
 
         self.logger.info('item +++++ %s', item)

@@ -14,9 +14,9 @@ scrapy crawl remex -O remex.csv
 
 
 
-## REMEX
+## FABREEX
 
-Каталог: https://www.remex.ru/price
+Каталог: https://www.fabreex.ru/price
 ```shell
 scrapy crawl fabreex -O fabreex.json
 ```
