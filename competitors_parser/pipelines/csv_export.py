@@ -4,8 +4,8 @@ import logging
 from pathlib import Path
 
 
-class BaseCSVExportPipeline:
-    """Базовый класс для экспорта в CSV"""
+class BaseCSVPipeline:
+    """Базовый класс для CSV экспорта"""
 
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -20,7 +20,7 @@ class BaseCSVExportPipeline:
             self.logger.info(f"Файл {filename} успешно сохранен")
 
 
-class FullFormatCSVPipeline(BaseCSVExportPipeline):
+class FullFormatCSVPipeline(BaseCSVPipeline):
     """Пайплайн для полного формата данных (Fabreex)"""
 
     def open_spider(self, spider):
@@ -45,7 +45,8 @@ class FullFormatCSVPipeline(BaseCSVExportPipeline):
                 'currency',
                 'category',
                 'url'
-            ]
+            ],
+            delimiter=';'
         )
         self.exporters[spider].writeheader()
         self.logger.info(f"Начало записи в файл: {filename}")
@@ -55,25 +56,13 @@ class FullFormatCSVPipeline(BaseCSVExportPipeline):
             return item
 
         try:
-            row = {
-                'product_code': item.get('product_code', ''),
-                'name': item.get('name', ''),
-                'price': item.get('price', 0.0),
-                'stock': item.get('stock', 0),
-                'unit': item.get('unit', 'шт.'),
-                'currency': item.get('currency', 'RUB'),
-                'category': item.get('category', ''),
-                'url': item.get('url', '')
-            }
-            self.exporters[spider].writerow(row)
-
+            self.exporters[spider].writerow(item)
         except Exception as e:
             self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
-
         return item
 
 
-class SimpleFormatCSVPipeline(BaseCSVExportPipeline):
+class SimpleFormatCSVPipeline(BaseCSVPipeline):
     """Пайплайн для упрощенного формата данных (остальные сайты)"""
 
     def open_spider(self, spider):
@@ -95,7 +84,8 @@ class SimpleFormatCSVPipeline(BaseCSVExportPipeline):
                 'city',
                 'stock',
                 'url'
-            ]
+            ],
+            delimiter=';'
         )
         self.exporters[spider].writeheader()
         self.logger.info(f"Начало записи в файл: {filename}")
@@ -105,16 +95,7 @@ class SimpleFormatCSVPipeline(BaseCSVExportPipeline):
             return item
 
         try:
-            row = {
-                'category': item.get('category', ''),
-                'name': item.get('name', ''),
-                'city': item.get('city', ''),
-                'stock': item.get('stock', 0),
-                'url': item.get('url', '')
-            }
-            self.exporters[spider].writerow(row)
-
+            self.exporters[spider].writerow(item)
         except Exception as e:
             self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
-
         return item

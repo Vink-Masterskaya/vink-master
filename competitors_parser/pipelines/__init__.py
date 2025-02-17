@@ -1,7 +1,8 @@
+from .csv_export import FullFormatCSVPipeline, SimpleFormatCSVPipeline
 from .validation import ValidationPipeline
-from .csv_export import CSVExportPipeline
 
 __all__ = [
+    'FullFormatCSVPipeline',
+    'SimpleFormatCSVPipeline',
     'ValidationPipeline',
-    'CSVExportPipeline',
 ]

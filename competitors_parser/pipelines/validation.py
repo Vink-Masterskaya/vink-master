@@ -2,8 +2,6 @@ from scrapy.exceptions import DropItem
 
 
 class ValidationPipeline:
-    """Pipeline для валидации данных"""
-
     def process_item(self, item, spider):
         """
         Валидация данных в зависимости от типа парсера
@@ -15,74 +13,63 @@ class ValidationPipeline:
 
     def _validate_fabreex_item(self, item, spider):
         """Валидация для полного формата данных Fabreex"""
-        required_fields = {'product_code', 'name', 'price'}
+        # Проверяем только наличие имени, остальные поля опциональны
+        if not item.get('name'):
+            spider.logger.warning("Отсутствует название товара")
+            raise DropItem("Отсутствует название товара")
 
-        # Проверка обязательных полей
-        for field in required_fields:
-            if not item.get(field):
-                spider.logger.warning(f"Отсутствует обязательное поле {field}")
-                raise DropItem(f"Отсутствует обязательное поле {field}")
-
-        try:
-            # Валидация цены
-            price = float(item['price'])
-            if price < 0:
-                raise DropItem(f"Недопустимая цена: {price}")
-            item['price'] = price
-        except (ValueError, TypeError):
-            spider.logger.warning(f"Неверный формат цены: {item['price']}")
-            raise DropItem(f"Неверный формат цены: {item['price']}")
-
-        # Валидация количества, если оно указано
-        if 'stock' in item:
+        # Проверяем типы данных
+        if 'price' in item and item['price']:
             try:
-                stock = int(item['stock'])
-                if stock < 0:
-                    raise DropItem(f"Недопустимое количество: {stock}")
-                item['stock'] = stock
+                item['price'] = float(item['price'])
             except (ValueError, TypeError):
-                spider.logger.warning(f"Неверный формат количества: {item['stock']}")
-                raise DropItem(f"Неверный формат количества: {item['stock']}")
+                spider.logger.warning(f"Неверный формат цены: {item['price']}")
+                item['price'] = 0.0
 
-        # Проверка и очистка строковых полей
-        for field in ['product_code', 'name', 'unit', 'currency', 'category']:
-            if field in item:
-                item[field] = str(item[field]).strip()
+        if 'stock' in item and item['stock']:
+            try:
+                item['stock'] = int(item['stock'])
+            except (ValueError, TypeError):
+                spider.logger.warning(
+                    f"Неверный формат количества: {item['stock']}"
+                )
+                item['stock'] = 0
 
-        # Установка значений по умолчанию
+        # Устанавливаем значения по умолчанию
+        item.setdefault('product_code', '')
+        item.setdefault('price', 0.0)
+        item.setdefault('stock', 0)
         item.setdefault('unit', 'шт.')
         item.setdefault('currency', 'RUB')
-        item.setdefault('stock', 0)
+        item.setdefault('category', '')
+        item.setdefault('url', '')
 
         return item
 
     def _validate_simple_item(self, item, spider):
         """Валидация для упрощенного формата данных"""
-        required_fields = {'name', 'city'}
+        # Проверяем только имя и город
+        if not item.get('name'):
+            spider.logger.warning("Отсутствует название товара")
+            raise DropItem("Отсутствует название товара")
 
-        # Проверка обязательных полей
-        for field in required_fields:
-            if not item.get(field):
-                spider.logger.warning(f"Отсутствует обязательное поле {field}")
-                raise DropItem(f"Отсутствует обязательное поле {field}")
+        if not item.get('city'):
+            spider.logger.warning("Отсутствует город")
+            raise DropItem("Отсутствует город")
 
-        # Валидация количества
-        try:
-            stock = int(item.get('stock', 0))
-            if stock < 0:
-                raise DropItem(f"Недопустимое количество: {stock}")
-            item['stock'] = stock
-        except (ValueError, TypeError):
-            spider.logger.warning(f"Неверный формат количества: {item['stock']}")
-            raise DropItem(f"Неверный формат количества: {item['stock']}")
+        # Проверяем количество
+        if 'stock' in item and item['stock']:
+            try:
+                item['stock'] = int(item['stock'])
+            except (ValueError, TypeError):
+                spider.logger.warning(
+                    f"Неверный формат количества: {item['stock']}"
+                )
+                item['stock'] = 0
 
-        # Проверка и очистка строковых полей
-        for field in ['name', 'city', 'category']:
-            if field in item:
-                item[field] = str(item[field]).strip()
-
-        # Установка значений по умолчанию
-        item.setdefault('category', '')
+        # Устанавливаем значения по умолчанию
         item.setdefault('stock', 0)
+        item.setdefault('category', '')
+        item.setdefault('url', '')
 
         return item

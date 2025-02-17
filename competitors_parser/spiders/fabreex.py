@@ -1,92 +1,117 @@
 from .base import BaseCompetitorSpider
-from scrapy import Request
+from scrapy.spiders import Rule
+from scrapy.linkextractors import LinkExtractor
 
 
 class FabreexSpider(BaseCompetitorSpider):
     name = 'fabreex'
     allowed_domains = ['fabreex.ru']
-    start_urls = ['https://fabreex.ru/catalog']
+    start_urls = ['https://fabreex.ru/catalog/']
 
-    def parse(self, response):
-        """Парсинг каталога категорий"""
-        # Парсим все категории на странице
-        categories = response.css('.bx_catalog_tile_section a')
-        for category in categories:
-            category_url = self.get_full_url(category.css('::attr(href)').get())
-            category_name = category.css('::text').get()
-
-            yield Request(
-                url=category_url,
-                callback=self.parse_category,
-                meta={
-                    'category': self.clean_text(category_name)
-                }
-            )
-
-    def parse_category(self, response):
-        """Парсинг страницы категории с товарами"""
-        # Парсим товары на текущей странице
-        products = response.css('.product-item')
-
-        for product in products:
-            # Получаем ссылку на товар для парсинга детальной информации
-            product_url = self.get_full_url(
-                product.css('.product-item-title a::attr(href)').get()
-            )
-
-            yield Request(
-                url=product_url,
-                callback=self.parse_product,
-                meta={
-                    'category': response.meta.get('category')
-                }
-            )
-
-        # Проверяем наличие следующей страницы
-        next_page = response.css('.bx-pagination-next a::attr(href)').get()
-        if next_page:
-            yield Request(
-                url=self.get_full_url(next_page),
-                callback=self.parse_category,
-                meta=response.meta
-            )
+    rules = (
+        # Правило для обхода категорий
+        Rule(
+            LinkExtractor(
+                allow=(
+                    r'/trikotazh/',
+                    r'/negoryuchie-tkani/',
+                    r'/tkani-dlya-pechati/',
+                    r'/bumaga/',
+                    r'/sublimatsionnye-chernila/',
+                    r'/aksessuary/',
+                    r'/oborudovanie/',
+                ),
+                deny=(
+                    r'sort=',
+                    r'/favorites/',
+                    r'/compare/',
+                )
+            ),
+            follow=True
+        ),
+        # Правило для парсинга товаров
+        Rule(
+            LinkExtractor(
+                allow=r'/product/',
+                deny=(
+                    r'sort=',
+                    r'/favorites/',
+                    r'/compare/',
+                )
+            ),
+            callback='parse_product'
+        ),
+    )
 
     def parse_product(self, response):
         """Парсинг страницы товара"""
         try:
-            # Парсим основную информацию о товаре
-            name = response.css('.product-item-detail-tab-content h1::text').get()
-            price_text = response.css('.product-item-detail-price-current::text').get()
-            stock_text = response.css('.product-item-detail-available::text').get()
-
-            # Пытаемся получить артикул
-            product_code = response.css('[data-entity="sku-line-block"] .product-item-detail-properties-value::text').get()
-
-            # Если артикул не найден, используем часть URL
-            if not product_code:
-                product_code = response.url.split('/')[-2]
-
-            # Формируем item
+            self.logger.info(f"Processing product: {response.url}")
+            
+            # Название товара (проверяем разные селекторы)
+            name = (
+                response.css('h1::text').get() or
+                response.css('.product-title::text').get() or
+                response.css('.uk-h2::text').get()
+            )
+            if not name:
+                return None  # Пропускаем товар без названия
+            name = self.clean_text(name)
+            
+            # Цена (проверяем разные селекторы)
+            price_text = (
+                response.css('.uk-text-lead::text').get() or
+                response.css('.price::text').get() or
+                response.css('div[class*="price"]::text').get()
+            )
+            price = self.extract_price(price_text) if price_text else 0.0
+            
+            # Наличие (проверяем разные варианты)
+            stock_text = (
+                response.css('div:contains("В наличии")::text').get() or
+                response.css('[class*="stock"]::text').get() or
+                response.css('[class*="quantity"]::text').get()
+            )
+            stock = 1 if stock_text and 'наличии' in stock_text.lower() else 0
+            
+            # Параметры товара
+            params = {}
+            for select in response.css('select'):
+                select_id = select.css('::attr(id)').get('').lower()
+                value = select.css('option[selected]::text').get()
+                
+                if value:
+                    value = value.strip()
+                    if 'плотность' in select_id or 'plotnost' in select_id:
+                        params['density'] = value
+                    elif 'ширина' in select_id or 'shirina' in select_id:
+                        params['width'] = value
+                    elif 'единиц' in select_id:
+                        params['unit'] = value
+            
+            # Единица измерения
+            unit = params.get('unit', 'пог.м')
+            
+            # Формируем артикул
+            product_code = self.create_product_code(name, **params)
+            
+            # Получаем категорию
+            category = self.get_category_from_url(response.url)
+            
             item = {
-                'product_code': self.clean_text(product_code),
-                'name': self.clean_text(name),
-                'price': self.extract_price(price_text),
-                'stock': self.extract_stock(stock_text),
-                'unit': 'шт.',  # По умолчанию
+                'product_code': product_code,
+                'name': name,
+                'price': price,
+                'stock': stock,
+                'unit': unit,
                 'currency': 'RUB',
-                'category': response.meta.get('category'),
+                'category': category,
                 'url': response.url
             }
-
-            # Проверяем обязательные поля
-            if item['name'] and (item['product_code'] or item['name']):
-                yield item
-            else:
-                self.logger.warning(
-                    f"Пропущен товар из-за отсутствия обязательных полей: {response.url}"
-                )
-
+            
+            self.logger.debug(f"Extracted item: {item}")
+            return item
+            
         except Exception as e:
-            self.logger.error(
-                f"Ошибка при парсинге товара {response.url}: {str(e)}"
-            )
+            self.logger.error(f"Error parsing product {response.url}: {str(e)}")
+            return None
