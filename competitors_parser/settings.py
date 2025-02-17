@@ -22,7 +22,8 @@ COOKIES_ENABLED = False
 # Configure item pipelines
 ITEM_PIPELINES = {
     'competitors_parser.pipelines.validation.ValidationPipeline': 300,
-    'competitors_parser.pipelines.csv_export.CSVExportPipeline': 400,
+    'competitors_parser.pipelines.csv_export.FullFormatCSVPipeline': 400,
+    'competitors_parser.pipelines.csv_export.SimpleFormatCSVPipeline': 401,
 }
 
 # Enable and configure the AutoThrottle extension

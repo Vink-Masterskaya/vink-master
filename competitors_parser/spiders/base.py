@@ -54,22 +54,6 @@ class BaseCompetitorSpider(Spider):
             request = failure.request
             self.logger.error(f'TimeoutError on {request.url}')
 
-    def extract_price(self, value: Optional[str]) -> float:
-        """Извлечение и очистка цены"""
-        if not value:
-            return 0.0
-        try:
-            # Удаляем все нечисловые символы, кроме точки и запятой
-            clean_value = ''.join(
-                c for c in value if c.isdigit() or c in '.,'
-            )
-            # Заменяем запятую на точку
-            clean_value = clean_value.replace(',', '.')
-            return float(clean_value)
-        except (ValueError, TypeError):
-            self.logger.warning(f"Не удалось преобразовать цену: {value}")
-            return 0.0
-
     def extract_stock(self, value: Optional[str]) -> int:
         """Извлечение количества товара на складе"""
         if not value:
