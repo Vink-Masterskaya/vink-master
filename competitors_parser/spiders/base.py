@@ -58,12 +58,17 @@ class BaseCompetitorSpider(CrawlSpider):
 
     def get_category_from_url(self, url: str) -> str:
         """Получение категории из URL"""
-        parts = url.split('/')[3:-2]  # Пропускаем домен и последние части
-        return ' / '.join(
-            part.replace('-', ' ').title()
-            for part in parts
-            if part and part not in ['catalog', 'product']
-        )
+        try:
+            # Удаляем домен и очищаем путь
+            path = url.split('/catalog/')[-1].strip('/')
+            # Преобразуем slug в читаемый текст
+            return ' / '.join(
+                part.replace('-', ' ').title()
+                for part in path.split('/')
+                if part
+            )
+        except (IndexError, AttributeError):
+            return ""
 
     def create_product_code(self, name: str, **params: Dict[str, Any]) -> str:
         """
