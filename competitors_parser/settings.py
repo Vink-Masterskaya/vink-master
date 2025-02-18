@@ -25,8 +25,10 @@ COOKIES_ENABLED = False
 # Configure item pipelines
 ITEM_PIPELINES = {
     'competitors_parser.pipelines.validation.ValidationPipeline': 300,
-    'competitors_parser.pipelines.csv_export.FullFormatCSVPipeline': 400,
-    'competitors_parser.pipelines.csv_export.SimpleFormatCSVPipeline': 401,
+    'competitors_parser.exporters.csv_exporter.FullFormatCSVExporter': 400,
+    'competitors_parser.exporters.csv_exporter.SimpleFormatCSVExporter': 401,
+    'competitors_parser.exporters.json_exporter.FullFormatJSONExporter': 402,
+    'competitors_parser.exporters.json_exporter.SimpleFormatJSONExporter': 403,
 }
 
 # Enable and configure AutoThrottle

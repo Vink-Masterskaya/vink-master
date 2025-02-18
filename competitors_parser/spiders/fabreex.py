@@ -1,3 +1,5 @@
+from typing import Dict, Any, Optional
+from scrapy.http import Response
 from .base import BaseCompetitorSpider
 from scrapy.spiders import Rule
 from scrapy.linkextractors import LinkExtractor
@@ -9,7 +11,7 @@ class FabreexSpider(BaseCompetitorSpider):
     start_urls = ['https://fabreex.ru/catalog/']
 
     rules = (
-        # Правило для обхода категорий - теперь собираем все категории
+        # Правило для обхода категорий - собираем все категории
         Rule(
             LinkExtractor(
                 allow=r'/catalog/[^/]+/$',  # любая категория в каталоге
@@ -41,7 +43,7 @@ class FabreexSpider(BaseCompetitorSpider):
         ),
     )
 
-    def parse_product(self, response):
+    def parse_product(self, response: Response) -> Optional[Dict[str, Any]]:
         """Парсинг страницы товара"""
         try:
             self.logger.info(f"Processing product: {response.url}")
@@ -72,6 +74,17 @@ class FabreexSpider(BaseCompetitorSpider):
             )
             stock = 1 if stock_text and 'наличии' in stock_text.lower() else 0
 
+            # Физические характеристики
+            specs = {}
+            spec_rows = response.css(
+                '.specifications tr, .uk-description-list dt'
+                )
+            for row in spec_rows:
+                key = row.css('::text').get('').strip().lower()
+                value = row.css('+ dd ::text, + td ::text').get('').strip()
+                if key and value:
+                    specs[key] = value
+
             # Параметры товара
             params = {}
             for select in response.css('select'):
@@ -96,13 +109,24 @@ class FabreexSpider(BaseCompetitorSpider):
             # Получаем категорию
             category = self.get_category_from_url(response.url)
 
+            # Формируем stocks
+            stocks = [{
+                'stock': 'Санкт-Петербург',  # Или другой город
+                'quantity': stock,
+                'price': price
+            }]
+
             item = {
                 'product_code': product_code,
                 'name': name,
                 'price': price,
-                'stock': stock,
+                'stocks': stocks,
                 'unit': unit,
                 'currency': 'RUB',
+                'weight': specs.get('вес'),
+                'length': specs.get('длина'),
+                'width': specs.get('ширина', params.get('width')),
+                'height': specs.get('высота'),
                 'category': category,
                 'url': response.url
             }
@@ -111,5 +135,7 @@ class FabreexSpider(BaseCompetitorSpider):
             return item
 
         except Exception as e:
-            self.logger.error(f"Error parsing product {response.url}: {str(e)}")
+            self.logger.error(
+                f"Error parsing product {response.url}: {str(e)}"
+                )
             return None
