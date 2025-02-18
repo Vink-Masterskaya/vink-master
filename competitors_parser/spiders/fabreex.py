@@ -1,8 +1,9 @@
+import scrapy
 from typing import Dict, Any, Optional
 from scrapy.http import Response
-from .base import BaseCompetitorSpider
-from scrapy.spiders import Rule
+from scrapy.spiders import Rule, CrawlSpider
 from scrapy.linkextractors import LinkExtractor
+from .base import BaseCompetitorSpider
 
 
 class FabreexSpider(BaseCompetitorSpider):
@@ -11,10 +12,9 @@ class FabreexSpider(BaseCompetitorSpider):
     start_urls = ['https://fabreex.ru/catalog/']
 
     rules = (
-        # Правило для обхода категорий - собираем все категории
         Rule(
             LinkExtractor(
-                allow=r'/catalog/[^/]+/$',  # любая категория в каталоге
+                allow=r'/catalog/[^/]+/$',
                 deny=(
                     r'sort=',
                     r'/favorites/',
@@ -29,10 +29,9 @@ class FabreexSpider(BaseCompetitorSpider):
             ),
             follow=True
         ),
-        # Правило для парсинга товаров
         Rule(
             LinkExtractor(
-                allow=r'/product/',  # все товары
+                allow=r'/product/',
                 deny=(
                     r'sort=',
                     r'/favorites/',
@@ -44,21 +43,18 @@ class FabreexSpider(BaseCompetitorSpider):
     )
 
     def parse_product(self, response: Response) -> Optional[Dict[str, Any]]:
-        """Парсинг страницы товара"""
         try:
             self.logger.info(f"Processing product: {response.url}")
 
-            # Название товара (проверяем разные селекторы)
             name = (
                 response.css('h1::text').get() or
                 response.css('.product-title::text').get() or
                 response.css('.uk-h2::text').get()
             )
             if not name:
-                return None  # Пропускаем товар без названия
+                return None
             name = self.clean_text(name)
 
-            # Цена (проверяем разные селекторы)
             price_text = (
                 response.css('.uk-text-lead::text').get() or
                 response.css('.price::text').get() or
@@ -66,26 +62,35 @@ class FabreexSpider(BaseCompetitorSpider):
             )
             price = self.extract_price(price_text) if price_text else 0.0
 
-            # Наличие (проверяем разные варианты)
-            stock_text = (
-                response.css('div:contains("В наличии")::text').get() or
-                response.css('[class*="stock"]::text').get() or
-                response.css('[class*="quantity"]::text').get()
+            quantity_input = (
+                response.css(
+                    'input[type="number"]::attr(value), '
+                    'input#quantity_16137::attr(value)').get() or
+                response.css('input.uk-quantity[type="number"]::attr(value)').get()
             )
-            stock = 1 if stock_text and 'наличии' in stock_text.lower() else 0
+            quantity = self.extract_stock(quantity_input) if quantity_input else 0
 
-            # Физические характеристики
-            specs = {}
-            spec_rows = response.css(
-                '.specifications tr, .uk-description-list dt'
+            if not quantity:
+                quantity_text = (
+                    response.css('input[id^="quantity_"]::attr(value)').get() or
+                    response.css('.uk-quantity input::attr(value)').get() or
+                    response.css('.quantity-input::attr(value)').get()
                 )
+                quantity = self.extract_stock(quantity_text) if quantity_text else 0
+
+            self.logger.debug(
+                f"Extracted quantity: {quantity} from input: "
+                f"{quantity_input or quantity_text}"
+            )
+
+            specs = {}
+            spec_rows = response.css('.specifications tr, .uk-description-list dt')
             for row in spec_rows:
                 key = row.css('::text').get('').strip().lower()
                 value = row.css('+ dd ::text, + td ::text').get('').strip()
                 if key and value:
                     specs[key] = value
 
-            # Параметры товара
             params = {}
             for select in response.css('select'):
                 select_id = select.css('::attr(id)').get('').lower()
@@ -100,19 +105,19 @@ class FabreexSpider(BaseCompetitorSpider):
                     elif 'единиц' in select_id:
                         params['unit'] = value
 
-            # Единица измерения
-            unit = params.get('unit', 'пог.м')
+            unit_text = (
+                response.css('li[data-price-name] span::text').get() or
+                response.css('.price-name span::text').get() or
+                response.css('[data-unit]::text').get()
+            )
+            unit = self.clean_text(unit_text) if unit_text else "шт."
 
-            # Формируем артикул
             product_code = self.create_product_code(name, **params)
-
-            # Получаем категорию
             category = self.get_category_from_url(response.url)
 
-            # Формируем stocks
             stocks = [{
-                'stock': 'Санкт-Петербург',  # Или другой город
-                'quantity': stock,
+                'stock': 'Санкт-Петербург',
+                'quantity': quantity,
                 'price': price
             }]
 
@@ -135,7 +140,5 @@ class FabreexSpider(BaseCompetitorSpider):
             return item
 
         except Exception as e:
-            self.logger.error(
-                f"Error parsing product {response.url}: {str(e)}"
-                )
+            self.logger.error(f"Error parsing product {response.url}: {str(e)}")
             return None

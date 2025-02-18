@@ -1,4 +1,3 @@
-# competitors_parser/exporters/json_exporter.py
 import json
 from typing import Dict, Any
 from .base import BaseExporter
@@ -17,17 +16,23 @@ class FullFormatJSONExporter(BaseExporter):
         if spider.name != 'fabreex':
             return item
 
-        self.items.append(item)
+        try:
+            self.items.append(item)
+        except Exception as e:
+            self.logger.error(f"Ошибка при добавлении в JSON: {str(e)}")
         return item
 
     def close_spider(self, spider):
         if spider.name != 'fabreex':
             return
 
-        filename = self._get_filename(spider.name, 'json')
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.items, f, ensure_ascii=False, indent=2)
-        self.logger.info(f"Файл {filename} успешно сохранен")
+        try:
+            filename = self._get_filename(spider.name, 'json')
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.items, f, ensure_ascii=False, indent=2)
+            self.logger.info(f"Файл {filename} успешно сохранен")
+        except Exception as e:
+            self.logger.error(f"Ошибка при сохранении JSON: {str(e)}")
 
 
 class SimpleFormatJSONExporter(BaseExporter):
@@ -43,14 +48,20 @@ class SimpleFormatJSONExporter(BaseExporter):
         if spider.name == 'fabreex':
             return item
 
-        self.items.append(item)
+        try:
+            self.items.append(item)
+        except Exception as e:
+            self.logger.error(f"Ошибка при добавлении в JSON: {str(e)}")
         return item
 
     def close_spider(self, spider):
         if spider.name == 'fabreex':
             return
 
-        filename = self._get_filename(spider.name, 'json')
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.items, f, ensure_ascii=False, indent=2)
-        self.logger.info(f"Файл {filename} успешно сохранен")
+        try:
+            filename = self._get_filename(spider.name, 'json')
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.items, f, ensure_ascii=False, indent=2)
+            self.logger.info(f"Файл {filename} успешно сохранен")
+        except Exception as e:
+            self.logger.error(f"Ошибка при сохранении JSON: {str(e)}")

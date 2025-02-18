@@ -1,15 +1,15 @@
-from typing import Dict, Any
-from scrapy.exceptions import DropItem
+from typing import Dict, Any, Union
 import logging
+from scrapy.exceptions import DropItem
 
-# Определяем числовой тип как один из вариантов
-NumberType = float | int  # В Python 3.10+ используем новый синтаксис union types
+# Определяем тип для числовых значений
+NumberType = Union[float, int]
 
 
 class ValidationPipeline:
     """Валидация данных перед сохранением"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
@@ -20,13 +20,11 @@ class ValidationPipeline:
 
     def _validate_fabreex_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Валидация для полного формата данных Fabreex"""
-        # Проверяем обязательные поля
         if not item.get('name'):
             msg = "Missing required field: name"
             self.logger.warning(msg)
             raise DropItem(msg)
 
-        # Валидация stocks
         if 'stocks' in item:
             if not isinstance(item['stocks'], list):
                 self.logger.warning("Stocks must be a list")
@@ -50,7 +48,6 @@ class ValidationPipeline:
                         valid_stocks.append(valid_stock)
                 item['stocks'] = valid_stocks
 
-        # Значения по умолчанию
         defaults = {
             'product_code': '',
             'price': 0.0,
@@ -68,6 +65,7 @@ class ValidationPipeline:
             item.setdefault(field, default)
 
         item['price'] = self._validate_number(item['price'], 'price', float)
+
         return item
 
     def _validate_simple_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
@@ -89,6 +87,7 @@ class ValidationPipeline:
             item.setdefault(field, default)
 
         item['stock'] = self._validate_number(item['stock'], 'stock', int)
+
         return item
 
     def _validate_number(

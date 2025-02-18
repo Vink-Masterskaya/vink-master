@@ -1,10 +1,11 @@
-# competitors_parser/exporters/csv_exporter.py
 import csv
 from typing import Dict, Any
 from .base import BaseExporter
 
 
 class FullFormatCSVExporter(BaseExporter):
+    """Экспортер для полного формата данных (Fabreex)"""
+
     def open_spider(self, spider):
         if spider.name != 'fabreex':
             return
@@ -17,8 +18,8 @@ class FullFormatCSVExporter(BaseExporter):
                 'product_code',
                 'name',
                 'price',
-                'stock',
-                'quantity',
+                'stock',  # имя склада
+                'quantity',  # количество на складе
                 'unit',
                 'currency',
                 'category',
@@ -51,15 +52,17 @@ class FullFormatCSVExporter(BaseExporter):
                     self.exporters[spider].writerow(flat_item)
             else:
                 # Для обратной совместимости
-                flat_item['quantity'] = flat_item.get('stock', 0)
+                flat_item['stock'] = 'Основной'
+                flat_item['quantity'] = 0
                 self.exporters[spider].writerow(flat_item)
+
         except Exception as e:
             self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
         return item
 
 
 class SimpleFormatCSVExporter(BaseExporter):
-    """Экспортер для упрощенного формата данных"""
+    """Экспортер для упрощенного формата данных (остальные сайты)"""
 
     def open_spider(self, spider):
         if spider.name == 'fabreex':
