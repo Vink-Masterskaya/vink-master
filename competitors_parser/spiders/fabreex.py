@@ -54,39 +54,31 @@ class FabreexSpider(BaseCompetitorSpider):
     )
 
     def get_category_from_menu(self, response: Response) -> str:
-        """Получение категории по тексту и атрибуту name из меню"""
-        # Сначала пробуем получить name атрибут
-        menu_item = response.css('.burger-menu__main-left-item::attr(name)').get()
-        category = self.CATEGORY_MAP.get(menu_item, '')
+        """Получение категории по URL и атрибуту name из меню"""
+        # Пробуем определить категорию по URL
+        url = response.url.lower()
 
-        if not category:
-            # Если не получилось по name, пробуем по тексту ссылки
-            menu_items = response.css('.burger-menu__main-left-item::text').getall()
-            menu_items = [self.clean_text(item) for item in menu_items if item.strip()]
-
-            # Проверяем URL на наличие ключевых слов категорий
-            url = response.url.lower()
-            if 'plotter' in url or 'printer' in url:
-                category = 'Оборудование'
-            elif 'chernila' in url:
-                category = 'Сублимационные чернила'
-            elif 'bumaga' in url:
-                category = 'Бумага'
-            elif 'tkan' in url:
-                category = 'Ткани для печати'
-            elif 'aksessuar' in url:
-                category = 'Аксессуары'
+        if 'tkan' in url or 'light' in url:
+            if 'negoruch' in url or 'negoryuch' in url:
+                category = 'Негорючие ткани для интерьера'
             else:
-                # Если не нашли по URL, пробуем определить по названию товара
-                product_name = self.clean_text(response.css('h1::text').get() or '').lower()
-                if 'плоттер' in product_name or 'принтер' in product_name:
-                    category = 'Оборудование'
-                elif 'чернила' in product_name:
-                    category = 'Сублимационные чернила'
-                else:
-                    category = "Другое"
+                category = 'Ткани для печати'
+        elif 'plotter' in url or 'printer' in url or 'oborudovanie' in url:
+            category = 'Оборудование'
+        elif 'sublimatsionnye-chernila' in url or 'chernila' in url:
+            category = 'Сублимационные чернила'
+        elif 'bumaga' in url:
+            category = 'Бумага'
+        elif 'trikotazh' in url:
+            category = 'Трикотаж'
+        elif 'aksessuar' in url:
+            category = 'Аксессуары'
+        else:
+            # Если не удалось определить по URL, пробуем по атрибуту name
+            menu_item = response.xpath('//a[contains(@class, "burger-menu__main-left-item")]/@name').get()
+            category = self.CATEGORY_MAP.get(menu_item, "Другое")
 
-        self.logger.debug(f"Category detection: name={menu_item}, url={response.url}, category={category}")
+        self.logger.debug(f"URL: {url}, Category: {category}")
         return category
 
     def parse_product(self, response: Response) -> Optional[Dict[str, Any]]:

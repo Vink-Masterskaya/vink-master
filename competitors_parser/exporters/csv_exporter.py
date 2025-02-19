@@ -15,19 +15,15 @@ class FullFormatCSVExporter(BaseExporter):
         self.exporters[spider] = csv.DictWriter(
             self.files[spider],
             fieldnames=[
-                'product_code',
+                'category',
+                'product_code', 
                 'name',
                 'price',
                 'stock',  # имя склада
                 'quantity',  # количество на складе
                 'unit',
                 'currency',
-                'category',
-                'url',
-                'weight',
-                'length',
-                'width',
-                'height'
+                'url'
             ],
             delimiter=';'
         )
@@ -41,6 +37,10 @@ class FullFormatCSVExporter(BaseExporter):
         try:
             # Преобразуем stocks в плоскую структуру
             flat_item = item.copy()
+            # Удаляем лишние поля, если они есть
+            for field in ['weight', 'length', 'width', 'height']:
+                flat_item.pop(field, None)
+                
             if 'stocks' in flat_item:
                 stocks = flat_item.pop('stocks')
                 for stock_info in stocks:
