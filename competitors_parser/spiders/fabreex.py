@@ -1,8 +1,6 @@
 import scrapy
 from typing import Dict, Any, Optional
 from scrapy.http import Response
-from scrapy.spiders import Rule, CrawlSpider
-from scrapy.linkextractors import LinkExtractor
 from .base import BaseCompetitorSpider
 
 
@@ -11,176 +9,130 @@ class FabreexSpider(BaseCompetitorSpider):
     allowed_domains = ['fabreex.ru']
     start_urls = ['https://fabreex.ru/catalog/']
 
-    # Маппинг категорий по id из меню
-    CATEGORY_MAP = {
-        '117': 'Аксессуары',
-        '179': 'Бумага',
-        '177': 'Негорючие ткани для интерьера',
-        '181': 'Оборудование',
-        '180': 'Сублимационные чернила',
-        '178': 'Ткани для печати',
-        '176': 'Трикотаж'
-    }
+    def parse(self, response: Response):
+        """Парсинг главной страницы каталога"""
+        all_categories = response.css('.uk-button')
+        links = all_categories.css('a::attr(href)').getall()
+        categories = all_categories.css('a::text').getall()
 
-    rules = (
-        Rule(
-            LinkExtractor(
-                allow=r'/catalog/[^/]+/$',
-                deny=(
-                    r'sort=',
-                    r'/favorites/',
-                    r'/compare/',
-                    r'/cart/',
-                    r'/personal/',
-                    r'/about/',
-                    r'/contacts/',
-                    r'/delivery/',
-                    r'/payment/',
-                )
-            ),
-            follow=True
-        ),
-        Rule(
-            LinkExtractor(
-                allow=r'/product/',
-                deny=(
-                    r'sort=',
-                    r'/favorites/',
-                    r'/compare/',
-                )
-            ),
-            callback='parse_product'
-        ),
-    )
+        for category_name, category_link in zip(categories, links):
+            category = self.clean_text(category_name)
+            self.logger.info(f'Category link: {category} - {category_link}')
 
-    def get_category_from_menu(self, response: Response) -> str:
-        """Получение категории по URL и атрибуту name из меню"""
-        # Пробуем определить категорию по URL
-        url = response.url.lower()
-
-        if 'tkan' in url or 'light' in url:
-            if 'negoruch' in url or 'negoryuch' in url:
-                category = 'Негорючие ткани для интерьера'
-            else:
-                category = 'Ткани для печати'
-        elif 'plotter' in url or 'printer' in url or 'oborudovanie' in url:
-            category = 'Оборудование'
-        elif 'sublimatsionnye-chernila' in url or 'chernila' in url:
-            category = 'Сублимационные чернила'
-        elif 'bumaga' in url:
-            category = 'Бумага'
-        elif 'trikotazh' in url:
-            category = 'Трикотаж'
-        elif 'aksessuar' in url:
-            category = 'Аксессуары'
-        else:
-            # Если не удалось определить по URL, пробуем по атрибуту name
-            menu_item = response.xpath('//a[contains(@class, "burger-menu__main-left-item")]/@name').get()
-            category = self.CATEGORY_MAP.get(menu_item, "Другое")
-
-        self.logger.debug(f"URL: {url}, Category: {category}")
-        return category
-
-    def parse_product(self, response: Response) -> Optional[Dict[str, Any]]:
-        try:
-            self.logger.info(f"Processing product: {response.url}")
-
-            name = (
-                response.css('h1::text').get() or
-                response.css('.product-title::text').get() or
-                response.css('.uk-h2::text').get()
+            yield scrapy.Request(
+                url=response.urljoin(category_link),
+                callback=self.parse_category,
+                cb_kwargs={'category': category}
             )
+
+    def parse_category(self, response: Response, category: str):
+        """Парсинг страницы категории"""
+        products_table = response.xpath(
+            '//*[@class="sz-cards-bottom sz-cards-bottom-new"]'
+        )
+        self.logger.info(f'Processing category: {category}')
+
+        products = products_table.css('a::attr(href)').getall()
+        for product_url in products:
+            self.logger.info(f'Product link: {product_url}')
+            yield scrapy.Request(
+                url=response.urljoin(product_url),
+                callback=self.parse_product,
+                cb_kwargs={'category': category}
+            )
+
+    def parse_product(
+        self,
+        response: Response,
+        category: str
+    ) -> Optional[Dict[str, Any]]:
+        """Парсинг страницы товара"""
+        try:
+            name = response.css('h1::text').get()
             if not name:
                 return None
             name = self.clean_text(name)
 
-            price_text = (
-                response.css('.uk-text-lead::text').get() or
-                response.css('.price::text').get() or
-                response.css('div[class*="price"]::text').get()
-            )
-            price = self.extract_price(price_text) if price_text else 0.0
+            # Получаем базовую цену
+            price_text = response.css('.sz-full-price-prod::text').get()
+            base_price = self.extract_price(price_text) if price_text else 0.0
 
-            # Наличие и количество
-            quantity_input = response.css('input[type="number"]::attr(max)').get()
-            quantity = self.extract_stock(quantity_input) if quantity_input else 0
-
-            if not quantity:
-                quantity_text = (
-                    response.css('input[id^="quantity_"]::attr(max)').get() or
-                    response.css('.uk-quantity input::attr(max)').get() or
-                    response.css('.quantity-input::attr(max)').get()
+            # Получаем доступные цвета
+            color_elements = response.css('.desc-color-element')
+            if not color_elements:
+                # Если нет выбора цветов, обрабатываем как один товар
+                return self._create_item(
+                    name=name,
+                    price=base_price,
+                    category=category,
+                    response=response
                 )
-                quantity = self.extract_stock(quantity_text) if quantity_text else 0
 
-            self.logger.debug(
-                f"Extracted quantity: {quantity} from input: "
-                f"{quantity_input or quantity_text}"
-            )
+            items = []
+            # Обрабатываем каждый цвет как отдельный товар
+            for color_element in color_elements:
+                # Получаем цену для конкретного цвета
+                color_price_text = color_element.css(
+                    '.color-price::text'
+                    ).get()
+                color_price = (
+                    self.extract_price(
+                        color_price_text) if color_price_text else base_price)
 
-            # Физические характеристики
-            specs = {}
-            weight_text = response.css('input[type="number"]::attr(max)').get()
-            specs['вес'] = weight_text if weight_text else None
+                # Получаем название цвета
+                color_name = (color_element.css(
+                    '::attr(title)').get() or 'Стандартный')
+                color_name = self.clean_text(color_name)
 
-            spec_rows = response.css('.specifications tr, .uk-description-list dt')
-            for row in spec_rows:
-                key = row.css('::text').get('').strip().lower()
-                value = row.css('+ dd ::text, + td ::text').get('').strip()
-                if key and value:
-                    specs[key] = value
+                # Формируем название с учетом цвета
+                full_name = f"{name} ({color_name})"
 
-            params = {}
-            for select in response.css('select'):
-                select_id = select.css('::attr(id)').get('').lower()
-                value = select.css('option[selected]::text').get()
+                item = self._create_item(
+                    name=full_name,
+                    price=color_price,
+                    category=category,
+                    response=response
+                )
+                items.append(item)
 
-                if value:
-                    value = value.strip()
-                    if 'плотность' in select_id or 'plotnost' in select_id:
-                        params['density'] = value
-                    elif 'ширина' in select_id or 'shirina' in select_id:
-                        params['width'] = value
-                    elif 'единиц' in select_id:
-                        params['unit'] = value
-
-            unit_text = (
-                response.css('li[data-price-name] span::text').get() or
-                response.css('.price-name span::text').get() or
-                response.css('[data-unit]::text').get()
-            )
-            unit = self.clean_text(unit_text) if unit_text else "шт."
-
-            product_code = self.create_product_code(name, **params)
-
-            # Получаем категорию
-            category = self.get_category_from_menu(response)
-            self.logger.debug(f"Found category by menu item name: {category}")
-
-            stocks = [{
-                'stock': 'Санкт-Петербург',
-                'quantity': quantity,
-                'price': price
-            }]
-
-            item = {
-                'category': category,
-                'product_code': product_code,
-                'name': name,
-                'price': price,
-                'stocks': stocks,
-                'unit': unit,
-                'currency': 'RUB',
-                'weight': specs.get('вес'),
-                'length': specs.get('длина'),
-                'width': specs.get('ширина', params.get('width')),
-                'height': specs.get('высота'),
-                'url': response.url
-            }
-
-            self.logger.debug(f"Extracted item: {item}")
-            return item
+            return items[0] if items else None
 
         except Exception as e:
-            self.logger.error(f"Error parsing product {response.url}: {str(e)}")
+            self.logger.error(
+                f"Error parsing product {response.url}: {str(e)}"
+            )
             return None
+
+    def _create_item(
+        self,
+        name: str,
+        price: float,
+        category: str,
+        response: Response
+    ) -> Dict[str, Any]:
+        """Создание item'а с общими параметрами"""
+        units = response.xpath(
+            '//*[@class="uk-position-relative uk-position-z-index"]'
+            '/text()'
+        ).getall()[:2]
+        unit = str(units).strip() if units else "шт."
+
+        quantity_text = response.css('input[type="number"]::attr(max)').get()
+        quantity = self.extract_stock(quantity_text) if quantity_text else 0
+
+        stocks = [{
+            'stock': 'Санкт-Петербург',
+            'quantity': quantity,
+            'price': price
+        }]
+
+        return {
+            'category': category,
+            'product_code': self.clean_text(name),
+            'name': name,
+            'price': price,
+            'stocks': stocks,
+            'unit': unit,
+            'currency': 'RUB',
+            'url': response.url
+        }

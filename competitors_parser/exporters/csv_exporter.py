@@ -16,7 +16,7 @@ class FullFormatCSVExporter(BaseExporter):
             self.files[spider],
             fieldnames=[
                 'category',
-                'product_code', 
+                'product_code',
                 'name',
                 'price',
                 'stock',  # имя склада
@@ -40,7 +40,7 @@ class FullFormatCSVExporter(BaseExporter):
             # Удаляем лишние поля, если они есть
             for field in ['weight', 'length', 'width', 'height']:
                 flat_item.pop(field, None)
-                
+
             if 'stocks' in flat_item:
                 stocks = flat_item.pop('stocks')
                 for stock_info in stocks:
