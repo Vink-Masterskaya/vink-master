@@ -1,7 +1,6 @@
-from typing import Dict, Any, Optional, Iterator
-from scrapy import Spider, Request
+from typing import Dict, Any, Iterator
+from scrapy import Request
 from scrapy.http import Response
-import re
 from .base import BaseCompetitorSpider
 
 
@@ -58,8 +57,10 @@ class FabreexSpider(BaseCompetitorSpider):
             )
 
     def parse_product(
-        self, response: Response, category: str
-    ) -> Iterator[Dict[str, Any]]:
+            self,
+            response: Response,
+            category: str
+            ) -> Iterator[Dict[str, Any]]:
         """Парсинг страницы товара"""
         try:
             name = response.css('h1::text').get()
@@ -70,16 +71,27 @@ class FabreexSpider(BaseCompetitorSpider):
             price_text = response.css('.sz-full-price-prod::text').get()
             price = self.extract_price(price_text) if price_text else 0.0
 
+            # Получаем текущий цвет
+            color = response.xpath(
+                '//*[@class="sz-color-block sz-color-block-active"]'
+                )
+            current_color = color.css('a::attr(uk-tooltip)').get()
+            current_color = self.clean_text(
+                current_color
+                ) if current_color else "Стандартный"
+
             yield self._create_item(
                 name=name,
                 price=price,
                 category=category,
-                response=response
+                response=response,
+                current_color=current_color
             )
 
+            # Перебираем ссылки на другие цвета
             color_links = response.css(
                 '.desc-color-element::attr(href)'
-            ).getall()
+                ).getall()
 
             for color_link in color_links:
                 if color_link:
@@ -92,11 +104,16 @@ class FabreexSpider(BaseCompetitorSpider):
         except Exception as e:
             self.logger.error(
                 f"Error parsing product {response.url}: {str(e)}"
-            )
+                )
 
     def _create_item(
-        self, name: str, price: float, category: str, response: Response
-    ) -> Dict[str, Any]:
+            self,
+            name: str,
+            price: float,
+            category: str,
+            response: Response,
+            current_color: str
+            ) -> Dict[str, Any]:
         """Создание item'а с общими параметрами"""
         # Парсим юнит
         units = response.xpath(
@@ -116,27 +133,16 @@ class FabreexSpider(BaseCompetitorSpider):
         quantity_text = response.css('input[type="number"]::attr(max)').get()
         quantity = self.extract_stock(quantity_text) if quantity_text else 0
 
-        # Парсим ширину
+        # Парсим ширину и форматируем
         width = None
-        width_text = response.css('._select__select-width::text').get()
-        if width_text:
-            width_match = re.search(r'\d+', width_text)
-            if width_match:
-                width = float(width_match.group())
+        width_value = response.css(
+            '.sz-text-count-select.sz-text-count-select-active::text'
+            ).get()
 
-        # Получаем текущий цвет товара
-        current_color = "Стандартный"
+        if width_value:
+            width = f"См: {width_value.strip()}"
 
-        # Ищем активный цвет по классу sz-color-block-active
-        color = response.css('.sz-color-block.sz-color-block-active::attr(tooltip)').get()
-        if not color:
-            # Если активный класс не найден, ищем по атрибуту tooltip у всех цветов
-            color = response.css('.sz-color-block::attr(tooltip)').get()
-
-        if color:
-            current_color = self.clean_text(color)
-
-        # Добавляем цвет в название
+        # Формируем название с цветом
         full_name = f"{name} ({current_color})"
 
         stocks = [{
