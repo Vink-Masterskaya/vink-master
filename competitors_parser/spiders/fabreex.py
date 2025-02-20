@@ -71,6 +71,19 @@ class FabreexSpider(BaseCompetitorSpider):
             price_text = response.css('.sz-full-price-prod::text').get()
             price = self.extract_price(price_text) if price_text else 0.0
 
+            # Парсинг характеристик товара для получения ширины
+            char_keys = response.xpath(
+                '//*[@class="sz-text-large"]/text()'
+                ).getall()
+            char_values = response.xpath(
+                '//*[@class="sz-text-large"]/following-sibling::div[1]/text()'
+                ).getall()
+            width_value = None
+            for key, value in zip(char_keys, char_values):
+                if 'ширина' in key.lower():
+                    width_value = value.strip()
+                    break
+
             # Получаем текущий цвет
             color = response.xpath(
                 '//*[@class="sz-color-block sz-color-block-active"]'
@@ -85,7 +98,8 @@ class FabreexSpider(BaseCompetitorSpider):
                 price=price,
                 category=category,
                 response=response,
-                current_color=current_color
+                current_color=current_color,
+                width_value=width_value
             )
 
             # Перебираем ссылки на другие цвета
@@ -112,7 +126,8 @@ class FabreexSpider(BaseCompetitorSpider):
             price: float,
             category: str,
             response: Response,
-            current_color: str
+            current_color: str,
+            width_value: str = None
             ) -> Dict[str, Any]:
         """Создание item'а с общими параметрами"""
         # Парсим юнит
@@ -133,20 +148,13 @@ class FabreexSpider(BaseCompetitorSpider):
         quantity_text = response.css('input[type="number"]::attr(max)').get()
         quantity = self.extract_stock(quantity_text) if quantity_text else 0
 
-        # Парсим ширину и форматируем
-        width = None
-        width_value = response.css(
-            '.sz-text-count-select.sz-text-count-select-active::text'
-            ).get()
-
-        if width_value:
-            width = f"См: {width_value.strip()}"
+        width = width_value if width_value else None
 
         # Формируем название с цветом
         full_name = f"{name} ({current_color})"
 
         stocks = [{
-            'stock': 'Санкт-Петербург',
+            'stock': 'Москва',
             'quantity': quantity,
             'price': price
         }]

@@ -18,7 +18,11 @@ class ValidationPipeline:
             return self._validate_fabreex_item(item, spider)
         return self._validate_simple_item(item, spider)
 
-    def _validate_fabreex_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
+    def _validate_fabreex_item(
+            self,
+            item: Dict[str, Any],
+            spider
+            ) -> Dict[str, Any]:
         """Валидация для полного формата данных Fabreex"""
         if not item.get('name'):
             msg = "Missing required field: name"
@@ -68,7 +72,11 @@ class ValidationPipeline:
 
         return item
 
-    def _validate_simple_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
+    def _validate_simple_item(
+            self,
+            item: Dict[str, Any],
+            spider
+            ) -> Dict[str, Any]:
         """Валидация для упрощенного формата данных"""
         required_fields = ['name', 'city']
         for field in required_fields:
