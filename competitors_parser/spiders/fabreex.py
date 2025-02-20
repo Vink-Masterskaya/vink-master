@@ -45,8 +45,8 @@ class FabreexSpider(BaseCompetitorSpider):
                 cb_kwargs={'category': category}
             )
 
-        next_page = response.css(
-            '.uk-pagination .uk-active + li a::attr(href)'
+        next_page = response.xpath(
+            '//li[@class="uk-active"]/following-sibling::li[1]//a/@href'
         ).get()
         if next_page:
             self.logger.info(f'Next page link: {next_page}')
@@ -71,27 +71,24 @@ class FabreexSpider(BaseCompetitorSpider):
             price_text = response.css('.sz-full-price-prod::text').get()
             price = self.extract_price(price_text) if price_text else 0.0
 
-            # Парсинг характеристик товара для получения ширины
             char_keys = response.xpath(
-                '//*[@class="sz-text-large"]/text()'
-                ).getall()
+                '//*[@class="sz-text-large"]/text()').getall()
             char_values = response.xpath(
                 '//*[@class="sz-text-large"]/following-sibling::div[1]/text()'
-                ).getall()
+            ).getall()
+
             width_value = None
             for key, value in zip(char_keys, char_values):
                 if 'ширина' in key.lower():
                     width_value = value.strip()
                     break
 
-            # Получаем текущий цвет
             color = response.xpath(
-                '//*[@class="sz-color-block sz-color-block-active"]'
-                )
+                '//*[@class="sz-color-block sz-color-block-active"]')
             current_color = color.css('a::attr(uk-tooltip)').get()
             current_color = self.clean_text(
                 current_color
-                ) if current_color else "Стандартный"
+            ) if current_color else "Стандартный"
 
             yield self._create_item(
                 name=name,
@@ -102,10 +99,8 @@ class FabreexSpider(BaseCompetitorSpider):
                 width_value=width_value
             )
 
-            # Перебираем ссылки на другие цвета
             color_links = response.css(
-                '.desc-color-element::attr(href)'
-                ).getall()
+                '.desc-color-element::attr(href)').getall()
 
             for color_link in color_links:
                 if color_link:
@@ -118,7 +113,7 @@ class FabreexSpider(BaseCompetitorSpider):
         except Exception as e:
             self.logger.error(
                 f"Error parsing product {response.url}: {str(e)}"
-                )
+            )
 
     def _create_item(
             self,
@@ -130,10 +125,8 @@ class FabreexSpider(BaseCompetitorSpider):
             width_value: str = None
             ) -> Dict[str, Any]:
         """Создание item'а с общими параметрами"""
-        # Парсим юнит
         units = response.xpath(
-            '//*[@class="uk-position-relative uk-position-z-index"]'
-            '/text()'
+            '//*[@class="uk-position-relative uk-position-z-index"]/text()'
         ).getall()[:2]
 
         if units:
@@ -144,13 +137,11 @@ class FabreexSpider(BaseCompetitorSpider):
         else:
             unit = 'За шт.'
 
-        # Парсим количество
         quantity_text = response.css('input[type="number"]::attr(max)').get()
         quantity = self.extract_stock(quantity_text) if quantity_text else 0
 
         width = width_value if width_value else None
 
-        # Формируем название с цветом
         full_name = f"{name} ({current_color})"
 
         stocks = [{
