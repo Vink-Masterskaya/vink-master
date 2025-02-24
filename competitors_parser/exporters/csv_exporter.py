@@ -19,8 +19,8 @@ class FullFormatCSVExporter(BaseExporter):
                 'product_code',
                 'name',
                 'price',
-                'stock',  # имя склада
-                'quantity',  # количество на складе
+                'stock',
+                'quantity',
                 'unit',
                 'currency',
                 'url'
@@ -70,17 +70,24 @@ class SimpleFormatCSVExporter(BaseExporter):
 
         filename = self._get_filename(spider.name, 'csv')
         self.files[spider] = open(filename, 'w', newline='', encoding='utf-8')
+
+        fieldnames = [
+            'category',
+            'name',
+            'price',
+            'currency',
+            'unit',
+            'stock',
+            'city',
+            'url',
+        ]
+
         self.exporters[spider] = csv.DictWriter(
             self.files[spider],
-            fieldnames=[
-                'category',
-                'name',
-                'city',
-                'stock',
-                'url'
-            ],
+            fieldnames=fieldnames,
             delimiter=';'
         )
+
         self.exporters[spider].writeheader()
         self.logger.info(f"Начало записи в файл: {filename}")
 

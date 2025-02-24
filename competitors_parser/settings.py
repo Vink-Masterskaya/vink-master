@@ -10,7 +10,7 @@ USER_AGENT = (
     )
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests
 CONCURRENT_REQUESTS = 16
