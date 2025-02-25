@@ -17,6 +17,12 @@ class BaseCompetitorSpider(Spider):
         )
     }
 
+    # Ключевые слова для цен по запросу
+    PRICE_REQUEST_KEYWORDS = [
+        "по запросу", "по заказу", "звоните", "уточняйте",
+        "договорная", "нет в наличии", "недоступно"
+    ]
+
     def __init__(self, *args, **kwargs):
         """Инициализация паука"""
         super().__init__(*args, **kwargs)
@@ -24,9 +30,27 @@ class BaseCompetitorSpider(Spider):
         self.logger.info(f"Starting spider: {self.name}")
 
     def extract_price(self, price_text: Optional[str]) -> float:
-        """Извлечение цены из текста"""
+        """
+        Извлечение цены из текста.
+        Если цена указана как "По запросу" или похожим образом,
+        возвращает 0.0
+
+        Args:
+            price_text: Текст, содержащий цену
+
+        Returns:
+            float: Извлеченная цена или 0.0 для цены по запросу
+        """
         if not price_text:
             return 0.0
+
+        # Проверяем наличие ключевых слов для цены по запросу
+        price_text_lower = price_text.lower()
+        for keyword in self.PRICE_REQUEST_KEYWORDS:
+            if keyword in price_text_lower:
+                self.logger.info(f"Price on request: {price_text}")
+                return 0.0
+
         try:
             # Очищаем от всего кроме цифр, точки и запятой
             clean_price = ''.join(
@@ -34,6 +58,9 @@ class BaseCompetitorSpider(Spider):
             )
             # Заменяем запятую на точку
             clean_price = clean_price.replace(',', '.')
+            # Проверяем не пустая ли строка
+            if not clean_price:
+                return 0.0
             return float(clean_price)
         except (ValueError, TypeError):
             self.logger.warning(f"Could not parse price: {price_text}")

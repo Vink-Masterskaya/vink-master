@@ -99,13 +99,22 @@ class RemexSpider(BaseCompetitorSpider):
                 )
                 continue
 
+            # Создаем структуру данных согласно ТЗ
             yield {
                 'category': category,
+                'product_code': name,
                 'name': name,
                 'price': price,
-                'currency': 'RUB',
+                'stocks': [{
+                    'stock': 'Москва',
+                    'quantity': 0,
+                    'price': price
+                }],
                 'unit': unit,
-                'stock': 'По запросу',
-                'city': 'Москва',
-                'url': response.url
+                'currency': 'RUB',
+                'weight': None,
+                'length': None,
+                'width': None,
+                'height': None,
+                'url': response.url,
             }

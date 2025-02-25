@@ -69,7 +69,22 @@ class FabreexSpider(BaseCompetitorSpider):
             name = self.clean_text(name)
 
             price_text = response.css('.sz-full-price-prod::text').get()
+
+            # Проверяем, является ли цена "По запросу" или подобным текстом
+            is_price_on_request = False
+            if price_text:
+                price_text_lower = price_text.lower()
+                for keyword in self.PRICE_REQUEST_KEYWORDS:
+                    if keyword in price_text_lower:
+                        is_price_on_request = True
+                        break
+
+            # Извлекаем цену
             price = self.extract_price(price_text) if price_text else 0.0
+
+            # Если цена по запросу, добавляем эту информацию в название
+            if is_price_on_request:
+                name = f"{name} (Цена: По запросу)"
 
             char_keys = response.xpath(
                 '//*[@class="sz-text-large"]/text()').getall()
@@ -140,7 +155,7 @@ class FabreexSpider(BaseCompetitorSpider):
         quantity_text = response.css('input[type="number"]::attr(max)').get()
         quantity = self.extract_stock(quantity_text) if quantity_text else 0
 
-        width = width_value if width_value else None
+        width = f"См: {width_value}" if width_value else None
 
         full_name = f"{name} ({current_color})"
 
@@ -158,9 +173,9 @@ class FabreexSpider(BaseCompetitorSpider):
             'stocks': stocks,
             'unit': unit,
             'currency': 'RUB',
-            'url': response.url,
             'weight': None,
             'length': None,
             'width': width,
-            'height': None
+            'height': None,
+            'url': response.url
         }

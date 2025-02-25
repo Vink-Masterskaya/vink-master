@@ -1,67 +1,52 @@
 import json
 from typing import Dict, Any
+from collections import OrderedDict
 from .base import BaseExporter
 
 
-class FullFormatJSONExporter(BaseExporter):
-    """Экспортер для полного формата данных (Fabreex)"""
+class JSONExporter(BaseExporter):
+    """Унифицированный JSON экспортер для всех пауков"""
 
     def open_spider(self, spider):
-        if spider.name != 'fabreex':
-            return
-        self.items = []
-        self.logger.info("Инициализация JSON экспортера для Fabreex")
-
-    def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
-        if spider.name != 'fabreex':
-            return item
-
-        try:
-            self.items.append(item)
-        except Exception as e:
-            self.logger.error(f"Ошибка при добавлении в JSON: {str(e)}")
-        return item
-
-    def close_spider(self, spider):
-        if spider.name != 'fabreex':
-            return
-
-        try:
-            filename = self._get_filename(spider.name, 'json')
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(self.items, f, ensure_ascii=False, indent=2)
-            self.logger.info(f"Файл {filename} успешно сохранен")
-        except Exception as e:
-            self.logger.error(f"Ошибка при сохранении JSON: {str(e)}")
-
-
-class SimpleFormatJSONExporter(BaseExporter):
-    """Экспортер для упрощенного формата данных"""
-
-    def open_spider(self, spider):
-        if spider.name == 'fabreex':
-            return
+        """Инициализация экспортера при старте паука"""
+        # Инициализируем список для хранения данных
         self.items = []
         self.logger.info(f"Инициализация JSON экспортера для {spider.name}")
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
-        if spider.name == 'fabreex':
-            return item
-
+        """Обработка и сохранение item для последующей записи в JSON"""
         try:
-            self.items.append(item)
+            # Создаем OrderedDict для сохранения порядка полей
+            ordered_item = OrderedDict()
+            ordered_item['category'] = item.get('category', '')
+            ordered_item['product_code'] = item.get('product_code', '')
+            ordered_item['name'] = item.get('name', '')
+            ordered_item['price'] = item.get('price', 0.0)
+            ordered_item['stocks'] = item.get('stocks', [])
+            ordered_item['unit'] = item.get('unit', '')
+            ordered_item['currency'] = item.get('currency', 'RUB')
+            ordered_item['weight'] = item.get('weight', None)
+            ordered_item['length'] = item.get('length', None)
+            ordered_item['width'] = item.get('width', None)
+            ordered_item['height'] = item.get('height', None)
+            ordered_item['url'] = item.get('url', '')
+
+            # Сохраняем item в новом порядке
+            self.items.append(ordered_item)
+
         except Exception as e:
-            self.logger.error(f"Ошибка при добавлении в JSON: {str(e)}")
+            self.logger.error(f"Ошибка при обработке item для JSON: {str(e)}")
+
         return item
 
     def close_spider(self, spider):
-        if spider.name == 'fabreex':
-            return
-
+        """Запись JSON файла при завершении работы паука"""
         try:
+            # Сохраняем данные в файл
             filename = self._get_filename(spider.name, 'json')
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.items, f, ensure_ascii=False, indent=2)
             self.logger.info(f"Файл {filename} успешно сохранен")
+
         except Exception as e:
             self.logger.error(f"Ошибка при сохранении JSON: {str(e)}")

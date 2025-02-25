@@ -22,6 +22,14 @@ class BaseExporter:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         return self._create_export_dir(spider_name) / f"{spider_name}_{timestamp}.{extension}"
 
+    def open_spider(self, spider):
+        """Метод, вызываемый при старте паука (должен быть переопределен)"""
+        pass
+
+    def process_item(self, item, spider):
+        """Метод, вызываемый для каждого item (должен быть переопределен)"""
+        return item
+
     def close_spider(self, spider):
         """Завершение работы при остановке паука"""
         if spider in self.files:
