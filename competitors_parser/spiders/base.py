@@ -1,6 +1,5 @@
 from scrapy import Spider
 from datetime import datetime
-import re
 from typing import Optional
 
 
@@ -55,46 +54,14 @@ class BaseCompetitorSpider(Spider):
             return 0
 
     def clean_text(self, text: Optional[str]) -> str:
-        """Очистка текста от лишних пробелов,
-        переносов строк и квадратных скобок"""
+        """Очистка текста от лишних пробелов и переносов строк"""
         if not text:
             return ""
-
-        # Заменяем содержимое в квадратных скобках более читаемым форматом
-        text = re.sub(
-            r'\[Fabreex\]', 'Fabreex', text)
-        text = re.sub(
-            r'\[(\d+)\]', r'\1', text)  # Оставляем только числа из скобок
-        text = re.sub(
-            r'\[([^\]]+)\]', r'\1', text)  # Остальные скобки просто убираем
 
         # Удаляем лишние пробелы и переносы строк
         text = " ".join(text.strip().split())
 
         return text
-
-    def get_category_from_url(self, url: str) -> str:
-        """Получение категории из URL"""
-        parts = url.split('/')[3:-2]  # Пропускаем домен и последние части
-        return ' / '.join(
-            part.replace('-', ' ').title()
-            for part in parts
-            if part and part not in ['catalog', 'product']
-        )
-
-    def create_product_code(self, name: str, **params) -> str:
-        """
-        Создание артикула товара из названия и дополнительных параметров
-
-        Args:
-            name (str): Название товара
-            **params: Дополнительные параметры
-            (например, width='100', density='200')
-        """
-        parts = [self.clean_text(name)]
-        parts.extend(str(value) for value in params.values() if value)
-        product_code = '_'.join(parts)
-        return re.sub(r'[^\w\-]', '_', product_code)
 
     def get_full_url(self, url: Optional[str]) -> Optional[str]:
         """Получение полного URL"""
