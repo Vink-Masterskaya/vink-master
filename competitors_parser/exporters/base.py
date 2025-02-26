@@ -20,7 +20,9 @@ class BaseExporter:
     def _get_filename(self, spider_name: str, extension: str) -> Path:
         """Генерация имени файла с временной меткой"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        return self._create_export_dir(spider_name) / f"{spider_name}_{timestamp}.{extension}"
+        return self._create_export_dir(
+            spider_name
+            ) / f"{spider_name}_{timestamp}.{extension}"
 
     def open_spider(self, spider):
         """Метод, вызываемый при старте паука (должен быть переопределен)"""
