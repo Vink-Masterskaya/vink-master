@@ -1,5 +1,5 @@
 import scrapy
-import aiohttp
+import requests
 from ..items import CompetitorsParserItem
 
 item = CompetitorsParserItem()
@@ -24,25 +24,24 @@ class CatalogSpider(scrapy.Spider):
                     url=response.urljoin(category),
                     callback=self.parse_category,
                 )
-                self.logger.info('category ------ %s', category)
+                # print('category ------ ', category)
                 request.cb_kwargs["foo"] = txt
                 request.cb_kwargs["cats"] = cats
                 yield request
 
     async def parse_category(self, response, foo, cats):
         """Парсинг страницы категории"""
-        products_table = response.xpath(
-            '//*[@class="catalog-section card"]'
-        )
+        print('category ------ ', response.request.url)
         try:
-            # price = contaner[0]
+            api_id = get_api_id(
+                    response.xpath(
+                        '//script[contains(., "productId")]/text()'
+                    ).get()
+            )
             product = response.css('h1::text').get()
-            # price = response.xpath(
-            #     '//*[@class="h1 text-primary"]/text()'
-            # ).get()
             name = product.replace(
                 '\n', '').replace('\r', '').replace('\t', '').replace('₽', '')
-            print('try________', product)
+            print('try________', product, api_id)
             api_id = get_api_id(
                 response.xpath(
                     '//script[contains(., "productId")]/text()'
@@ -59,18 +58,18 @@ class CatalogSpider(scrapy.Spider):
             stocks = await get_stocks(api_id)
             for stock in stocks:
                 item['category'] = foo
-                item['product_id'] = f'{offer_id} / {api_id}'
+                item['product_code'] = f'{offer_id} / {api_id}'
                 item['id'] = item['id'] + 1
                 item['url'] = response.request.url
-                # item['price'] = price.replace(
-                #    '\n', '').replace('\r', ''
-                #    ).replace('\t', '').replace('₽', '')
                 item['price'] = stock['price']
                 item['name'] = f'{name}{stock["name"]}'
                 item['stocks'] = stock['stocks']
                 yield item
         except Exception as e:
             print(e)
+        products_table = response.xpath(
+            '//*[@class="catalog-section card"]'
+        )
         products = products_table.css('a::attr(href)').getall()
         for product in products:
             if product not in cats:
@@ -100,24 +99,21 @@ def get_offer_id(xpath_str: str) -> str:
 
 async def get_stocks(api_id: str):
     url = f'https://www.forda.ru/get_offers?id={api_id}'
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            response = await resp.json()
-        resp = []
-        resp_json = {}
-        for product in response:
-            resp_json['name'] = product['name'],
-            resp_json['price'] = product['prices'][0]['price']
-            stocks = []
-            for warehouse in product['restsWarehouses']:
-                stocks.append({
-                    'stock': warehouse['store']['name'],
-                    'quantity': warehouse['rest'],
-                    'price': product['prices'][0]['price']}
-                )
-            resp_json['stocks'] = stocks
-            resp.append(resp_json.copy())
-        print(resp)
-        print('----------------------------')
-
+    response = requests.get(url).json()
+    resp = []
+    resp_json = {}
+    for product in response:
+        resp_json['name'] = product['name'],
+        resp_json['price'] = product['prices'][0]['price']
+        stocks = []
+        for warehouse in product['restsWarehouses']:
+            stocks.append({
+                'stock': warehouse['store']['name'],
+                'quantity': warehouse['rest'],
+                'price': product['prices'][0]['price']}
+            )
+        resp_json['stocks'] = stocks
+        resp.append(resp_json.copy())
+    print(resp)
+    print('----------------------------')
     return resp

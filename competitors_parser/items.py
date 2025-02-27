@@ -4,7 +4,7 @@ import scrapy
 class CompetitorsParserItem(scrapy.Item):
     id = scrapy.Field()
     category = scrapy.Field()
-    product_id= scrapy.Field()
+    product_code = scrapy.Field()
     name = scrapy.Field()
     unit = scrapy.Field()
     price = scrapy.Field()
