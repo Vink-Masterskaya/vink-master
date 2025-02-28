@@ -1,4 +1,5 @@
 import csv
+import json
 from typing import Dict, Any
 from .base import BaseExporter
 
@@ -16,10 +17,9 @@ class CSVExporter(BaseExporter):
             'product_code',
             'name',
             'price',
-            'stock',
-            'quantity',
-            'currency',
+            'stocks',
             'unit',
+            'currency',
             'weight',
             'length',
             'width',
@@ -38,22 +38,18 @@ class CSVExporter(BaseExporter):
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Обработка и запись item в CSV файл"""
         try:
-            # Создаем плоскую структуру для CSV
-            flat_items = self._flatten_item(item)
-            for flat_item in flat_items:
-                self.exporters[spider].writerow(flat_item)
+            # Создаем строку для CSV
+            csv_item = self._format_item(item)
+            self.exporters[spider].writerow(csv_item)
 
         except Exception as e:
             self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
 
         return item
 
-    def _flatten_item(self, item: Dict[str, Any]) -> list:
-        """Преобразование вложенной структуры stocks в плоскую для CSV"""
-        flat_items = []
-
-        # Подготавливаем базовый item
-        base_item = {
+    def _format_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Форматирование item для CSV с сохранением структуры складов"""
+        csv_item = {
             'category': item.get('category', ''),
             'product_code': item.get('product_code', ''),
             'name': item.get('name', ''),
@@ -67,30 +63,17 @@ class CSVExporter(BaseExporter):
             'url': item.get('url', '')
         }
 
-        # Получаем информацию о складах
         stocks = item.get('stocks', [])
-
-        # Если нет информации о складах,
-        # создаем одну запись с пустыми значениями
-        if not stocks:
-            flat_item = base_item.copy()
-            flat_item.update({
-                'stock': 'Основной',
-                'quantity': 0
-            })
-            flat_items.append(flat_item)
+        if stocks:
+            csv_item['stocks'] = json.dumps(stocks, ensure_ascii=False)
         else:
-            # Если есть информация о складах,
-            # создаем отдельную запись для каждого склада
-            for stock in stocks:
-                flat_item = base_item.copy()
-                flat_item.update({
-                    'stock': stock.get('stock', 'Основной'),
-                    'quantity': stock.get('quantity', 0)
-                })
-                flat_items.append(flat_item)
+            csv_item['stocks'] = json.dumps([{
+                'stock': 'Основной',
+                'quantity': 0,
+                'price': item.get('price', 0.0)
+            }], ensure_ascii=False)
 
-        return flat_items
+        return csv_item
 
     def _format_unit(self, unit):
         """Форматирование единицы измерения для CSV"""

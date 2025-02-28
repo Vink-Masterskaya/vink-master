@@ -1,119 +1,247 @@
-import scrapy
+from typing import Dict, Any, Iterator, List, Optional
+import json
 import requests
-from ..items import CompetitorsParserItem
+from scrapy import Request
+from scrapy.http import Response
+from .base import BaseCompetitorSpider
 
-item = CompetitorsParserItem()
-cats = []
 
-
-class CatalogSpider(scrapy.Spider):
+class FordaSpider(BaseCompetitorSpider):
+    """Паук для парсинга сайта forda.ru"""
     name = "forda"
-    allowed_domains = ["www.forda.ru"]
+    allowed_domains = ["forda.ru", "www.forda.ru"]
     start_urls = ["https://www.forda.ru/katalog/"]
 
-    async def parse(self, response):
+    # Исключаем категории из парсинга
+    excluded_categories = ['Новинки', 'Распродажа']
+
+    def parse(self, response: Response) -> Iterator[Request]:
         """Парсинг главной страницы каталога"""
         all_categories = response.css('a.card-header')
-        links = all_categories.css('a::attr(href)').getall()
-        txts = all_categories.css('a::text').getall()
-        for txt, category in zip(txts, links):
-            if txt not in ['Новинки', 'Распродажа']:
-                id = 0
-                item['id'] = id
-                request = scrapy.Request(
-                    url=response.urljoin(category),
-                    callback=self.parse_category,
-                )
-                # print('category ------ ', category)
-                request.cb_kwargs["foo"] = txt
-                request.cb_kwargs["cats"] = cats
-                yield request
 
-    async def parse_category(self, response, foo, cats):
-        """Парсинг страницы категории"""
-        print('category ------ ', response.request.url)
-        try:
-            api_id = get_api_id(
-                    response.xpath(
-                        '//script[contains(., "productId")]/text()'
-                    ).get()
-            )
-            product = response.css('h1::text').get()
-            name = product.replace(
-                '\n', '').replace('\r', '').replace('\t', '').replace('₽', '')
-            print('try________', product, api_id)
-            api_id = get_api_id(
-                response.xpath(
-                    '//script[contains(., "productId")]/text()'
-                ).get()
-            )
-            offer_id = get_offer_id(
-                response.xpath(
-                    '//script[contains(., "offer_id")]/text()'
-                ).get()
-            )
+        for category in all_categories:
+            category_name = category.css('::text').get()
+            category_url = category.css('::attr(href)').get()
+
+            # Пропускаем исключенные категории
+            if category_name in self.excluded_categories:
+                continue
+
+            if category_url:
+                self.logger.info(f'Category: {category_name} - {category_url}')
+
+                yield Request(
+                    url=response.urljoin(category_url),
+                    callback=self.parse_category,
+                    cb_kwargs={
+                        'category': category_name,
+                        'processed_urls': set()
+                        }
+                )
+
+    def parse_category(
+            self,
+            response: Response,
+            category: str,
+            processed_urls: set
+            ) -> Iterator[Request]:
+        """Парсинг страницы категории или товара"""
+        self.logger.info(f'Processing URL: {response.url}')
+
+        # Проверяем, является ли страница страницей товара
+        api_id = self._get_api_id(response)
+        offer_id = self._get_offer_id(response)
+
+        # Если нашли идентификаторы API и оффера, это страница товара
+        if api_id and offer_id:
             self.logger.info(
-                'api_id, offer_id_________%s, %s ', api_id, offer_id
-            )
-            stocks = await get_stocks(api_id)
-            for stock in stocks:
-                item['category'] = foo
-                item['product_code'] = f'{offer_id} / {api_id}'
-                item['id'] = item['id'] + 1
-                item['url'] = response.request.url
-                item['price'] = stock['price']
-                item['name'] = f'{name}{stock["name"]}'
-                item['stocks'] = stock['stocks']
-                yield item
-        except Exception as e:
-            print(e)
-        products_table = response.xpath(
-            '//*[@class="catalog-section card"]'
-        )
-        products = products_table.css('a::attr(href)').getall()
-        for product in products:
-            if product not in cats:
-                self.logger.info('category ========= %s', foo)
-                self.logger.info('category link ========= %s', product)
-                request = scrapy.Request(
-                    url=response.urljoin(product),
-                    callback=self.parse_category,
+                f'Processing product: API ID={api_id}, Offer ID={offer_id}'
                 )
-                request.cb_kwargs["foo"] = foo
-                request.cb_kwargs["cats"] = cats
-                yield request
+            yield from self._process_product(
+                response,
+                category,
+                api_id,
+                offer_id
+                )
 
+        # В любом случае ищем ссылки на другие товары
+        products_table = response.xpath('//*[@class="catalog-section card"]')
+        products = products_table.css('a::attr(href)').getall()
 
-def get_api_id(xpath_str: str) -> str:
-    return (xpath_str[xpath_str.find('(') + 1: xpath_str.find(')')])
+        for product_url in products:
+            full_url = response.urljoin(product_url)
 
+            # Избегаем повторной обработки URL
+            if full_url not in processed_urls:
+                processed_urls.add(full_url)
+                self.logger.info(f'Found product link: {product_url}')
 
-def get_offer_id(xpath_str: str) -> str:
-    return (
-        xpath_str[
-            xpath_str.find('offer_id:') + 11: xpath_str.find('offer_id:') + 50
-        ]
-        .replace('\n', '').replace('\r', '').replace('\t', '').replace("'", '')
-    )
+                yield Request(
+                    url=full_url,
+                    callback=self.parse_category,
+                    cb_kwargs={
+                        'category': category,
+                        'processed_urls': processed_urls
+                        }
+                )
 
+    def _process_product(
+            self,
+            response: Response,
+            category: str,
+            api_id: str,
+            offer_id: str
+            ) -> Iterator[Dict[str, Any]]:
+        """Обработка страницы товара"""
+        try:
+            # Получаем название продукта
+            product_name = response.css('h1::text').get()
+            if not product_name:
+                return
 
-async def get_stocks(api_id: str):
-    url = f'https://www.forda.ru/get_offers?id={api_id}'
-    response = requests.get(url).json()
-    resp = []
-    resp_json = {}
-    for product in response:
-        resp_json['name'] = product['name'],
-        resp_json['price'] = product['prices'][0]['price']
-        stocks = []
-        for warehouse in product['restsWarehouses']:
-            stocks.append({
-                'stock': warehouse['store']['name'],
-                'quantity': warehouse['rest'],
-                'price': product['prices'][0]['price']}
-            )
-        resp_json['stocks'] = stocks
-        resp.append(resp_json.copy())
-    print(resp)
-    print('----------------------------')
-    return resp
+            product_name = self.clean_text(product_name)
+
+            # Получаем информацию о складах через API
+            stocks_data = self._get_stocks_data(api_id)
+
+            if not stocks_data:
+                self.logger.warning(f'No stocks data for product {api_id}')
+                return
+
+            for product_variant in stocks_data:
+                variant_name = product_variant.get('name', '')
+                if isinstance(variant_name, tuple):
+                    variant_name = variant_name[0] if variant_name else ''
+
+                price = product_variant.get('price', 0.0)
+                stocks = product_variant.get('stocks', [])
+
+                # Формируем полное название товара
+                full_name = f"{product_name}{' ' + variant_name if variant_name and variant_name != '' else ''}"
+
+                # Проверка наличия складов
+                if not stocks:
+                    stocks = [{
+                        'stock': 'Основной',
+                        'quantity': 0,
+                        'price': price
+                    }]
+
+                item = {
+                    'category': category,
+                    'product_code': f'{offer_id} / {api_id}',
+                    'name': full_name,
+                    'price': price,
+                    'stocks': stocks,
+                    'unit': 'шт',
+                    'currency': 'RUB',
+                    'url': response.url
+                }
+
+                self.logger.info(
+                    f'Обработан товар: {full_name} с {len(stocks)} складами'
+                    )
+                yield item
+
+        except Exception as e:
+            self.logger.error(
+                f"Error processing product {response.url}: {str(e)}"
+                )
+
+    def _get_api_id(self, response: Response) -> Optional[str]:
+        """Извлечение API ID из скрипта на странице"""
+        script_text = response.xpath(
+            '//script[contains(., "productId")]/text()'
+            ).get()
+        if not script_text:
+            return None
+
+        try:
+            start_idx = script_text.find('(')
+            end_idx = script_text.find(')')
+            if start_idx != -1 and end_idx != -1:
+                return script_text[start_idx + 1:end_idx].strip()
+        except Exception as e:
+            self.logger.error(f"Error extracting API ID: {str(e)}")
+
+        return None
+
+    def _get_offer_id(self, response: Response) -> Optional[str]:
+        """Извлечение Offer ID из скрипта на странице"""
+        script_text = response.xpath(
+            '//script[contains(., "offer_id")]/text()'
+            ).get()
+        if not script_text:
+            return None
+
+        try:
+            start_idx = script_text.find('offer_id:') + 11
+            if start_idx != -1:
+                raw_offer_id = script_text[start_idx:start_idx + 50]
+                offer_id = self.clean_text(raw_offer_id.replace("'", ""))
+                return offer_id
+        except Exception as e:
+            self.logger.error(f"Error extracting Offer ID: {str(e)}")
+
+        return None
+
+    def _get_stocks_data(self, api_id: str) -> List[Dict[str, Any]]:
+        """Получение данных о наличии товара через API"""
+        url = f'https://www.forda.ru/get_offers?id={api_id}'
+
+        try:
+            # Делаем запрос к API
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            # Проверяем, что данные не пустые
+            if not data:
+                self.logger.warning(f"Empty API response for product {api_id}")
+                return []
+
+            result = []
+            # Обрабатываем каждый вариант продукта
+            for product in data:
+                product_name = product.get('name', '')
+                product_price = product.get(
+                    'prices', [{}])[0].get('price', 0.0)
+
+                # Собираем информацию о складах
+                stocks = []
+                for warehouse in product.get('restsWarehouses', []):
+                    store_info = warehouse.get('store', {})
+                    store_name = store_info.get('name', 'Основной')
+                    rest_qty = warehouse.get('rest', 0)
+
+                    # Добавляем информацию о складе
+                    stocks.append({
+                        'stock': store_name,
+                        'quantity': rest_qty,
+                        'price': product_price
+                    })
+
+                # Логируем информацию о найденных складах
+                self.logger.info(
+                    f'Найдено {len(stocks)} складов для товара {product_name}'
+                    )
+
+                # Добавляем данные о продукте с информацией о складах
+                result.append({
+                    'name': product_name,
+                    'price': product_price,
+                    'stocks': stocks
+                })
+
+            return result
+
+        except requests.RequestException as e:
+            self.logger.error(f"API request error for {api_id}: {str(e)}")
+        except (ValueError, json.JSONDecodeError) as e:
+            self.logger.error(f"JSON parse error for {api_id}: {str(e)}")
+        except Exception as e:
+            self.logger.error(
+                f"Unexpected error getting stocks for {api_id}: {str(e)}"
+                )
+
+        return []
