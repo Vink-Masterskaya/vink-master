@@ -57,4 +57,13 @@ scrapy crawl remex
 
 # Запуск парсера Forda
 scrapy crawl forda
+
+# Запуск парсера Tdppl
+scrapy crawl tdppl
+
+# Запуск парсера Zenon
+scrapy crawl zenon
+
+# Запуск парсера Oracal
+scrapy crawl oracal
 ```
