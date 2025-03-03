@@ -1,15 +1,17 @@
-import re
-from typing import Dict, Any, Iterator, List
 import logging
+import re
+from typing import Any, Dict, Iterator, List
+
+from playwright.sync_api import sync_playwright
 from scrapy import Request
 from scrapy.http import Response
-from playwright.sync_api import sync_playwright
+
 from .base import BaseCompetitorSpider
 
 
 class PappilonsCategoryParse:
     """
-    Используется для получения ссылок на товары категорий с помощью Playwright
+    Используется для получения ссылок на товары категорий с помощью Playwright.
     """
     def __init__(self, url: str):
         """
@@ -85,7 +87,6 @@ class PappilonsCategoryParse:
 
 
 class TdpplSpider(BaseCompetitorSpider):
-    """Паук для парсинга сайта tdppl.ru (Papillons)"""
     name = "tdppl"
     allowed_domains = ["tdppl.ru"]
     start_urls = ["https://tdppl.ru/catalog/"]
@@ -100,7 +101,7 @@ class TdpplSpider(BaseCompetitorSpider):
     }
 
     def parse(self, response: Response) -> Iterator[Request]:
-        """Парсинг главной страницы каталога"""
+        """Парсинг главной страницы каталога."""
         # Получаем ссылки на категории и их названия
         categories = response.css('a.block_main_left_menu__link')
 
@@ -126,7 +127,7 @@ class TdpplSpider(BaseCompetitorSpider):
             response: Response,
             category: str
             ) -> Iterator[Request]:
-        """Парсинг страницы категории с использованием Playwright"""
+        """Парсинг страницы категории."""
         self.logger.info(f'Обработка категории: {category} ({response.url})')
 
         # Используем Playwright для получения ссылок на товары
@@ -149,7 +150,7 @@ class TdpplSpider(BaseCompetitorSpider):
             response: Response,
             category: str
             ) -> Iterator[Dict[str, Any]]:
-        """Парсинг страницы товара"""
+        """Парсинг страницы товара."""
         try:
             self.logger.info(f'Обработка товара: {response.url}')
 
@@ -205,13 +206,13 @@ class TdpplSpider(BaseCompetitorSpider):
 
     def _extract_stocks(self, script_content: str) -> List[Dict[str, Any]]:
         """
-        Извлекает информацию о наличии товара на складах из скрипта
+        Извлекает информацию о наличии товара на складах из скрипта.
 
         Args:
-            script_content: Содержимое скрипта с информацией о складах
+            script_content: Содержимое скрипта с информацией о складах.
 
         Returns:
-            List[Dict[str, Any]]: Список с информацией о складах
+            List[Dict[str, Any]]: Список с информацией о складах.
         """
         stocks = []
 
@@ -255,13 +256,13 @@ class TdpplSpider(BaseCompetitorSpider):
 
     def _extract_price_and_currency(self, price_text: str) -> tuple:
         """
-        Извлекает цену и валюту из текста
+        Извлекает цену и валюту из текста.
 
         Args:
-            price_text: Текст, содержащий цену и валюту
+            price_text: Текст, содержащий цену и валюту.
 
         Returns:
-            tuple: (цена(float), валюта(str))
+            tuple: (цена(float), валюта(str)).
         """
         if not price_text:
             return 0.0, 'RUB'

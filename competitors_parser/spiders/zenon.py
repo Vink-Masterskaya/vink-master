@@ -1,11 +1,13 @@
-from typing import Dict, Any, Iterator
+from typing import Any, Dict, Iterator
+
 from scrapy import Request
 from scrapy.http import Response
+
 from .base import BaseCompetitorSpider
 
 
 class ZenonSpider(BaseCompetitorSpider):
-    """Паук для парсинга сайта zenonline.ru"""
+    """Паук для парсинга сайта zenonline.ru."""
     name = "zenon"
     allowed_domains = ["zenonline.ru"]
     start_urls = ["https://zenonline.ru/cat/"]
@@ -19,7 +21,7 @@ class ZenonSpider(BaseCompetitorSpider):
     }
 
     def parse(self, response: Response) -> Iterator[Request]:
-        """Парсим ссылки на категории из каталога"""
+        """Парсим ссылки на категории из каталога."""
         self.logger.info('Парсим ссылки на категории из каталога')
 
         catalog = response.css('div#catalog')
@@ -37,7 +39,7 @@ class ZenonSpider(BaseCompetitorSpider):
             )
 
     def parse_sub_category(self, response: Response) -> Iterator[Request]:
-        """Парсим ссылки на подкатегории"""
+        """Парсим ссылки на подкатегории."""
         self.logger.info('Парсим ссылки на подкатегории')
 
         sub_category = response.css('div.filter_b.filter_b_catalog')
@@ -60,7 +62,7 @@ class ZenonSpider(BaseCompetitorSpider):
             )
 
     def parse_product_list(self, response: Response) -> Iterator[Request]:
-        """Парсим ссылки на товары в подкатегории"""
+        """Парсим ссылки на товары в подкатегории."""
         category = self._extract_category(response)
         self.logger.info(
             f"Обрабатываем категорию: {category} ({response.url})"
@@ -99,7 +101,7 @@ class ZenonSpider(BaseCompetitorSpider):
             response: Response,
             category: str = ""
             ) -> Iterator[Dict[str, Any]]:
-        """Парсим карточку товара"""
+        """Парсим карточку товара."""
         self.logger.info(f"Парсим карточку товара: {response.url}")
 
         try:
@@ -200,7 +202,7 @@ class ZenonSpider(BaseCompetitorSpider):
                 )
 
     def _extract_category(self, response: Response) -> str:
-        """Извлекаем название категории"""
+        """Извлекаем название категории."""
         breadcrumbs = response.css('div.breadcrumbs a::text').getall()
         if len(breadcrumbs) > 1:
             return self.clean_text(breadcrumbs[-1])

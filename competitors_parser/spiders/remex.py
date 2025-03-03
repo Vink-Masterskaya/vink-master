@@ -1,11 +1,13 @@
-from typing import Dict, Any, Iterator
+from typing import Any, Dict, Iterator
+
 from scrapy import Request
 from scrapy.http import Response
+
 from .base import BaseCompetitorSpider
 
 
 class RemexSpider(BaseCompetitorSpider):
-    """Паук для парсинга сайта remex.ru"""
+    """Паук для парсинга сайта remex.ru."""
     name = "remex"
     allowed_domains = ["remex.ru"]
     start_urls = ["https://www.remex.ru/price"]
@@ -16,7 +18,7 @@ class RemexSpider(BaseCompetitorSpider):
     }
 
     def parse(self, response: Response) -> Iterator[Request]:
-        """Парсинг главной страницы каталога"""
+        """Парсинг главной страницы каталога."""
         all_categories = response.css('a[href^="/price/"]')
 
         for category in all_categories:
@@ -52,7 +54,7 @@ class RemexSpider(BaseCompetitorSpider):
             response: Response,
             category: str
             ) -> Iterator[Request]:
-        """Парсинг страницы категории"""
+        """Парсинг страницы категории."""
         products_table = response.xpath(
             '//*[@class="price-table price-table-images"]'
         )
@@ -74,7 +76,7 @@ class RemexSpider(BaseCompetitorSpider):
             response: Response,
             category: str
             ) -> Iterator[Dict[str, Any]]:
-        """Парсинг карточки товара"""
+        """Парсинг карточки товара."""
         product_table = response.xpath('//*[@class="price-table pprtbl"]')
         rows = product_table.css('tr')
 

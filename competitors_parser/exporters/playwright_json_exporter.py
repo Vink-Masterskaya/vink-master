@@ -1,6 +1,7 @@
 import json
-from typing import Dict, Any
 from collections import OrderedDict
+from typing import Any, Dict
+
 from .base import BaseExporter
 
 

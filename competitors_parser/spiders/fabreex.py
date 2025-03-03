@@ -1,6 +1,8 @@
-from typing import Dict, Any, Iterator
+from typing import Any, Dict, Iterator
+
 from scrapy import Request
 from scrapy.http import Response
+
 from .base import BaseCompetitorSpider
 
 
@@ -10,7 +12,7 @@ class FabreexSpider(BaseCompetitorSpider):
     start_urls = ['https://fabreex.ru/catalog/']
 
     def parse(self, response: Response) -> Iterator[Request]:
-        """Парсинг главной страницы каталога"""
+        """Парсинг главной страницы каталога."""
         all_categories = response.css('.uk-button')
         links = all_categories.css('a::attr(href)').getall()
         categories = all_categories.css('a::text').getall()
@@ -30,7 +32,7 @@ class FabreexSpider(BaseCompetitorSpider):
     def parse_category(
         self, response: Response, category: str
     ) -> Iterator[Request]:
-        """Парсинг страницы категории"""
+        """Парсинг страницы категории."""
         products_table = response.xpath(
             '//*[@class="sz-cards-bottom sz-cards-bottom-new"]'
         )
@@ -61,7 +63,7 @@ class FabreexSpider(BaseCompetitorSpider):
             response: Response,
             category: str
             ) -> Iterator[Dict[str, Any]]:
-        """Парсинг страницы товара"""
+        """Парсинг страницы товара."""
         try:
             name = response.css('h1::text').get()
             if not name:
@@ -139,7 +141,7 @@ class FabreexSpider(BaseCompetitorSpider):
             current_color: str,
             width_value: str = None
             ) -> Dict[str, Any]:
-        """Создание item'а с общими параметрами"""
+        """Создание item'а с общими параметрами."""
         units = response.xpath(
             '//*[@class="uk-position-relative uk-position-z-index"]/text()'
         ).getall()[:2]

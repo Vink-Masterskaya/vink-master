@@ -1,13 +1,15 @@
-from typing import Dict, Any, Iterator, List, Optional
 import json
+from typing import Any, Dict, Iterator, List, Optional
+
 import requests
 from scrapy import Request
 from scrapy.http import Response
+
 from .base import BaseCompetitorSpider
 
 
 class FordaSpider(BaseCompetitorSpider):
-    """Паук для парсинга сайта forda.ru"""
+    """Паук для парсинга сайта forda.ru."""
     name = "forda"
     allowed_domains = ["forda.ru", "www.forda.ru"]
     start_urls = ["https://www.forda.ru/katalog/"]
@@ -16,7 +18,7 @@ class FordaSpider(BaseCompetitorSpider):
     excluded_categories = ['Новинки', 'Распродажа']
 
     def parse(self, response: Response) -> Iterator[Request]:
-        """Парсинг главной страницы каталога"""
+        """Парсинг главной страницы каталога."""
         all_categories = response.css('a.card-header')
 
         for category in all_categories:
@@ -45,7 +47,7 @@ class FordaSpider(BaseCompetitorSpider):
             category: str,
             processed_urls: set
             ) -> Iterator[Request]:
-        """Парсинг страницы категории или товара"""
+        """Парсинг страницы категории или товара."""
         self.logger.info(f'Processing URL: {response.url}')
 
         # Проверяем, является ли страница страницей товара
@@ -92,7 +94,7 @@ class FordaSpider(BaseCompetitorSpider):
             api_id: str,
             offer_id: str
             ) -> Iterator[Dict[str, Any]]:
-        """Обработка страницы товара"""
+        """Обработка страницы товара."""
         try:
             # Получаем название продукта
             product_name = response.css('h1::text').get()
@@ -149,7 +151,7 @@ class FordaSpider(BaseCompetitorSpider):
                 )
 
     def _get_api_id(self, response: Response) -> Optional[str]:
-        """Извлечение API ID из скрипта на странице"""
+        """Извлечение API ID из скрипта на странице."""
         script_text = response.xpath(
             '//script[contains(., "productId")]/text()'
             ).get()
@@ -167,7 +169,7 @@ class FordaSpider(BaseCompetitorSpider):
         return None
 
     def _get_offer_id(self, response: Response) -> Optional[str]:
-        """Извлечение Offer ID из скрипта на странице"""
+        """Извлечение Offer ID из скрипта на странице."""
         script_text = response.xpath(
             '//script[contains(., "offer_id")]/text()'
             ).get()
@@ -186,7 +188,7 @@ class FordaSpider(BaseCompetitorSpider):
         return None
 
     def _get_stocks_data(self, api_id: str) -> List[Dict[str, Any]]:
-        """Получение данных о наличии товара через API"""
+        """Получение данных о наличии товара через API."""
         url = f'https://www.forda.ru/get_offers?id={api_id}'
 
         try:

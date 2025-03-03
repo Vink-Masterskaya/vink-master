@@ -1,8 +1,10 @@
 import json
 import time
-from typing import Dict, Any, Iterator
+from typing import Any, Dict, Iterator
+
 from scrapy import Request
 from scrapy.http import Response
+
 from .base import BaseCompetitorSpider
 
 
