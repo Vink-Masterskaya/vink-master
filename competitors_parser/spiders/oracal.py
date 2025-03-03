@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, List
 
 from scrapy import Request
 from scrapy.http import Response
@@ -9,245 +9,246 @@ from .base import BaseCompetitorSpider
 
 
 class OracalSpider(BaseCompetitorSpider):
-    """Паук для парсинга сайта oracal-online.ru"""
+    """Паук для парсинга сайта oracal-online.ru."""
     name = "oracal"
     allowed_domains = ["oracal-online.ru"]
     start_urls = ["https://api.oracal-online.ru/api/category/list/"]
 
-    # API endpoints
-    PRODUCT_LIST_URL = (
-        'https://api.oracal-online.ru/api/product/category?page=1&slug={}'
-    )
-    PRODUCT_DETAIL_URL = (
-        'https://api.oracal-online.ru/api/product-offer/'
-        'list?slug={}&page=1&isAvailable=false'
-    )
+    # API URL шаблоны
+    BASE_PROD_LIST_URL = 'https://api.oracal-online.ru/api/product/category?page=1&slug='
+    BASE_PROD_URL_BEGIN = 'https://api.oracal-online.ru/api/product-offer/list?slug='
+    BASE_PROD_URL_END = '&page=1&isAvailable=false'
+    BASE_SUBCAT_URL = 'https://api.oracal-online.ru/api/category?slug='
 
-    # Задержки для API запросов
-    CATEGORY_DELAY = 0.1
-    PRODUCT_LIST_DELAY = 0.3
-    PRODUCT_DETAIL_DELAY = 0.5
-
+    # Настройки для API запросов
     custom_settings = {
-        'CONCURRENT_REQUESTS': 8,
-        'DOWNLOAD_DELAY': 1,
+        "DOWNLOAD_DELAY": 0.5,
+        "CONCURRENT_REQUESTS": 8,
+        "RETRY_ENABLED": True,
+        "RETRY_TIMES": 3,
     }
 
     def parse(self, response: Response) -> Iterator[Request]:
-        """Парсинг категорий"""
+        """Парсинг категорий с API."""
+        self.logger.info("Начинаем парсинг категорий Oracal")
+
         try:
-            # Загружаем JSON с API
             result = json.loads(response.body)
 
-            self.logger.info(
-                f"Получено {len(result.get('data', []))} основных категорий"
-            )
-
-            # Обрабатываем каждую категорию и подкатегорию
             for category in result.get('data', []):
-                subcategories = category.get('subCategory', [])
-                category_name = category.get('title', '')
-                category_id = category.get('id', '')
+                subcats = category.get('subCategory', [])
+                category_title = category.get('title', '')
 
-                self.logger.info(
-                    f"Обработка категории: {category_name} "
-                    f"(ID: {category_id}, подкатегорий: {len(subcategories)})"
-                )
+                self.logger.info(f"Обрабатываем категорию: {category_title}")
 
-                for subcategory in subcategories:
-                    subcategory_id = subcategory.get('id', '')
-                    subcategory_name = subcategory.get('title', '')
-                    subcategory_slug = subcategory.get('slug', '')
+                for sub in subcats:
+                    sub_slug = sub.get('slug', '')
+                    sub_title = sub.get('title', '')
 
-                    # Полное название категории
-                    full_cat = f"{category_name} - {subcategory_name}"
+                    if not sub_slug:
+                        continue
 
-                    self.logger.info(
-                        f"Подкатегория: {subcategory_name} (ID: {subcategory_id})"
-                    )
-
-                    # Добавляем задержку
-                    time.sleep(self.CATEGORY_DELAY)
-
-                    # Формируем URL для получения списка товаров
-                    product_list_url = self.PRODUCT_LIST_URL.format(
-                        subcategory_slug
-                    )
+                    url = f'{self.BASE_SUBCAT_URL}{sub_slug}'
 
                     yield Request(
-                        url=product_list_url,
-                        callback=self.parse_product_list,
-                        cb_kwargs={'category': full_cat}
+                        url=url,
+                        callback=self.parse_category,
+                        cb_kwargs={
+                            'cat': f'{category_title} - {sub_title}',
+                            'sub': sub_slug
+                        },
+                        dont_filter=True
                     )
+                    time.sleep(0.1)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Ошибка при декодировании JSON: {str(e)}")
+            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
         except Exception as e:
-            self.logger.error(
-                f"Непредвиденная ошибка при обработке категорий: {str(e)}"
-            )
+            self.logger.error(f"Ошибка при парсинге категорий: {str(e)}")
+
+    def parse_category(
+            self,
+            response: Response,
+            cat: str,
+            sub: str
+            ) -> Iterator[Request]:
+        """Парсинг подкатегорий и поиск товаров."""
+        try:
+            result = json.loads(response.body)
+            data = result.get('data', {}).get('subCategories', [])
+
+            if len(data) > 0:
+                self.logger.info(f"Найдено {len(data)} подкатегорий в {cat}")
+
+                for subcategory in data:
+                    sub_slug = subcategory.get('slug', '')
+
+                    if not sub_slug:
+                        continue
+
+                    url = f'{self.BASE_SUBCAT_URL}{sub_slug}'
+
+                    yield Request(
+                        url=url,
+                        callback=self.parse_category,
+                        cb_kwargs={
+                            'cat': cat,
+                            'sub': sub_slug
+                        },
+                        dont_filter=True
+                    )
+                    time.sleep(0.3)
+            else:
+                url = f'{self.BASE_PROD_LIST_URL}{sub}'
+
+                yield Request(
+                    url=url,
+                    callback=self.parse_product_list,
+                    cb_kwargs={'cat': cat},
+                    dont_filter=True
+                )
+                time.sleep(0.3)
+
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
+        except Exception as e:
+            self.logger.error(f"Ошибка при парсинге категории {cat}: {str(e)}")
 
     def parse_product_list(
             self,
             response: Response,
-            category: str
+            cat: str
             ) -> Iterator[Request]:
-        """Парсинг списка товаров"""
+        """Парсинг списка товаров в категории."""
         try:
-            # Загружаем JSON с API
             result = json.loads(response.body)
             products = result.get('data', [])
 
-            self.logger.info(
-                f"Получено {len(products)} товаров в категории: {category}"
-            )
+            self.logger.info(f"Найдено {len(products)} товаров в {cat}")
 
-            # Обрабатываем каждый товар
             for product in products:
-                product_title = product.get('title', '')
                 product_slug = product.get('slug', '')
+                product_title = product.get('title', '')
 
-                self.logger.info(
-                    f"Обработка товара: {product_title} (slug: {product_slug})"
-                )
+                if not product_slug:
+                    continue
 
-                # Добавляем задержку
-                time.sleep(self.PRODUCT_LIST_DELAY)
-
-                # Формируем URL для получения деталей товара
-                product_detail_url = self.PRODUCT_DETAIL_URL.format(
-                    product_slug
-                )
+                url = f'{self.BASE_PROD_URL_BEGIN}{product_slug}{self.BASE_PROD_URL_END}'
 
                 yield Request(
-                    url=product_detail_url,
+                    url=url,
                     callback=self.parse_product,
-                    cb_kwargs={
-                        'category': category,
-                        'product_name': product_title
-                    }
+                    cb_kwargs={'cat': f'{cat} --- {product_title}'},
+                    dont_filter=True
                 )
+                time.sleep(0.3)
 
         except json.JSONDecodeError as e:
-            self.logger.error(
-                f"Ошибка при декодировании JSON списка товаров: {str(e)}"
-            )
+            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
         except Exception as e:
-            self.logger.error(
-                f"Непредвиденная ошибка при обработке товаров: {str(e)}"
-            )
+            self.logger.error(f"Ошибка при обработке списка товаров: {str(e)}")
 
     def parse_product(
             self,
             response: Response,
-            category: str,
-            product_name: str
+            cat: str
             ) -> Iterator[Dict[str, Any]]:
-        """Парсинг данных о товаре"""
+        """Парсинг данных о товаре."""
         try:
-            # Загружаем JSON с API
             result = json.loads(response.body)
+            data = result.get('data', {}).get('offers', {}).get('data', [])
 
-            # Получаем список вариантов товара
-            offers = result.get('data', {}).get('offers', {}).get('data', [])
+            for product in data:
+                product_id = product.get('id', '')
+                product_title = product.get('title', '')
+                product_id_1s = product.get('id_1s', '')
 
-            self.logger.info(
-                f"Получено {len(offers)} вариантов товара: {product_name}"
-            )
+                # Получаем цену и информацию о складах
+                price = self._get_price(product)
+                stocks = self._get_normalized_stocks(product)
 
-            # Обрабатываем каждый вариант товара
-            for offer in offers:
-                # Добавляем задержку
-                time.sleep(self.PRODUCT_DETAIL_DELAY)
+                # Получаем характеристики
+                properties = product.get('properties', [])
+                color = weight = width = length = None
 
-                # Извлекаем данные о товаре
-                offer_id = offer.get('id', '')
-                offer_id_1s = offer.get('id_1s', '')
-                offer_title = offer.get('title', '')
+                for prop in properties:
+                    prop_name = prop.get('name', '').lower()
+                    prop_value = prop.get('value', '')
 
-                # Получаем информацию о цене
-                prices = offer.get('prices', [{}])
-                price_value = prices[0].get('price', 0) if prices else 0
-                price_unit = prices[0].get('unit', '') if prices else ''
+                    if 'цвет' in prop_name:
+                        color = prop_value
+                    elif 'вес' in prop_name:
+                        weight = prop_value
+                    elif 'ширина' in prop_name:
+                        width = prop_value
+                    elif 'длина' in prop_name:
+                        length = prop_value
 
-                # Получаем информацию о наличии на складах
-                stocks_data = offer.get('restsAvailable', [])
-
-                # Преобразуем данные о складах в нужный формат
-                stocks = self._format_stocks(stocks_data, price_value)
-
-                # Формируем URL товара на сайте
-                web_url = (
-                    f"https://www.oracal-online.ru/product/{offer.get('slug', '')}"
-                )
-
-                self.logger.info(
-                    f"Обработан вариант товара: {offer_title} (ID: {offer_id})"
-                )
-
-                # Создаем и возвращаем item
                 yield {
-                    'category': category,
-                    'product_code': f"{offer_id_1s}/{offer_id}",
-                    'name': offer_title,
-                    'price': price_value,
+                    'category': cat,
+                    'product_code': f'{product_id_1s}/{product_id}',
+                    'name': product_title,
+                    'price': price,
                     'stocks': stocks,
-                    'unit': price_unit,
+                    'unit': product.get('unit', 'шт'),
                     'currency': 'RUB',
-                    'weight': None,
-                    'length': None,
-                    'width': None,
+                    'weight': weight,
+                    'width': width,
+                    'length': length,
                     'height': None,
-                    'url': web_url
+                    'url': response.url
                 }
+                time.sleep(0.5)
 
         except json.JSONDecodeError as e:
-            self.logger.error(
-                f"Ошибка при декодировании JSON данных товара: {str(e)}"
-            )
+            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
         except Exception as e:
-            self.logger.error(
-                f"Непредвиденная ошибка при обработке данных товара: {str(e)}"
-            )
+            self.logger.error(f"Ошибка при обработке товара: {str(e)}")
 
-    def _format_stocks(self, stocks_data: list, price: float) -> list:
-        """
-        Форматирует данные о складах в требуемом формате
+    def _get_price(self, product: Dict[str, Any]) -> float:
+        """Получение цены товара."""
+        prices = product.get('prices', [])
 
-        Args:
-            stocks_data: Данные о складах из API
-            price: Цена товара
+        if not prices:
+            return 0.0
 
-        Returns:
-            list: Отформатированные данные о складах
-        """
-        # Всегда имеем две записи: "Москва" и "На других складах"
-        moscow_quantity = 0
-        other_quantity = 0
+        main_price = prices[0].get('price', 0.0)
 
-        # Обрабатываем данные о складах, если они есть
-        if stocks_data:
-            for stock in stocks_data:
-                store_name = stock.get('store', {}).get('name', '')
-                quantity = stock.get('rest', 0)
+        try:
+            return float(main_price)
+        except (ValueError, TypeError):
+            self.logger.warning(f"Ошибка преобразования цены: {main_price}")
+            return 0.0
 
-                if store_name == 'Москва':
-                    moscow_quantity = quantity
-                else:
-                    other_quantity += quantity
+    def _get_normalized_stocks(
+            self,
+            product: Dict[str, Any]
+            ) -> List[Dict[str, Any]]:
+        """Нормализация данных о складах."""
+        result = []
 
-        # Формируем результат
-        formatted_stocks = [
-            {
-                "stock": "Москва",
-                "quantity": moscow_quantity,
-                "price": price
-            },
-            {
-                "stock": "На других складах",
-                "quantity": other_quantity,
-                "price": price
-            }
-        ]
+        # Обрабатываем склады в Москве
+        moscow_rests = product.get('restsAvailable', [])
+        moscow_quantity = sum(rest.get('amount', 0) for rest in moscow_rests)
 
-        return formatted_stocks
+        # Обрабатываем другие склады
+        other_rests = product.get('restsAllStore', [])
+        other_quantity = sum(rest.get('amount', 0) for rest in other_rests)
+
+        price = self._get_price(product)
+
+        # Добавляем московский склад
+        result.append({
+            'stock': 'Москва',
+            'quantity': moscow_quantity,
+            'price': price
+        })
+
+        # Добавляем другие склады
+        result.append({
+            'stock': 'На других складах',
+            'quantity': other_quantity,
+            'price': price
+        })
+
+        return result

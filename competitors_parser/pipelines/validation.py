@@ -5,7 +5,7 @@ from scrapy.exceptions import DropItem
 
 
 class ValidationPipeline:
-    """Валидация данных перед сохранением и приведение к единому формату"""
+    """Валидация данных перед сохранением и приведение к единому формату."""
 
     def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -14,7 +14,7 @@ class ValidationPipeline:
         # Дополнительное обязательное поле price проверяется отдельно
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
-        """Валидация и стандартизация данных для всех пауков"""
+        """Валидация и стандартизация данных для всех пауков."""
         # Проверка обязательных полей
         for field in self.required_fields:
             if not item.get(field):
@@ -53,7 +53,7 @@ class ValidationPipeline:
             key: str,
             default: Optional[str] = ''
             ) -> Optional[str]:
-        """Получение строкового значения"""
+        """Получение строкового значения."""
         value = item.get(key, default)
         if value is None:
             return None
@@ -65,7 +65,7 @@ class ValidationPipeline:
             key: str,
             default: float = 0.0
             ) -> float:
-        """Получение числового значения как float"""
+        """Получение числового значения как float."""
         value = item.get(key, default)
         if value is None:
             return default
@@ -81,7 +81,7 @@ class ValidationPipeline:
             return default
 
     def _normalize_stocks(self, item: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Нормализация данных о наличии товара на складах"""
+        """Нормализация данных о наличии товара на складах."""
         # Если уже в правильном формате, просто проверяем
         if 'stocks' in item and isinstance(item['stocks'], list):
             return [
@@ -112,7 +112,7 @@ class ValidationPipeline:
         return []
 
     def _normalize_stock_item(self, stock: Dict[str, Any]) -> Dict[str, Any]:
-        """Нормализация отдельной записи о складе"""
+        """Нормализация отдельной записи о складе."""
         return {
             'stock': self._get_str_value(stock, 'stock', 'Основной'),
             'quantity': self._get_int_value(stock, 'quantity', 0),
@@ -125,7 +125,7 @@ class ValidationPipeline:
             key: str,
             default: int = 0
             ) -> int:
-        """Получение числового значения как int"""
+        """Получение числового значения как int."""
         try:
             value = item.get(key, default)
             if value is None:
@@ -138,7 +138,7 @@ class ValidationPipeline:
             return default
 
     def _normalize_unit(self, item: Dict[str, Any]) -> Union[str, List[str]]:
-        """Нормализация единицы измерения"""
+        """Нормализация единицы измерения."""
         unit = item.get('unit')
 
         # Если единицы измерения нет, возвращаем значение по умолчанию
