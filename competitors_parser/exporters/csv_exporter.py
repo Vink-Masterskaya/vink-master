@@ -6,10 +6,10 @@ from .base import BaseExporter
 
 
 class CSVExporter(BaseExporter):
-    """Унифицированный CSV экспортер для всех пауков"""
+    """Унифицированный CSV экспортер для всех пауков."""
 
     def open_spider(self, spider):
-        """Инициализация экспортера при старте паука"""
+        """Инициализация экспортера при старте паука."""
         filename = self._get_filename(spider.name, 'csv')
         self.files[spider] = open(filename, 'w', newline='', encoding='utf-8')
 
@@ -37,7 +37,7 @@ class CSVExporter(BaseExporter):
         self.logger.info(f"Начало записи в файл: {filename}")
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
-        """Обработка и запись item в CSV файл"""
+        """Обработка и запись item в CSV файл."""
         try:
             # Создаем строку для CSV
             csv_item = self._format_item(item)
@@ -49,7 +49,7 @@ class CSVExporter(BaseExporter):
         return item
 
     def _format_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        """Форматирование item для CSV с сохранением структуры складов"""
+        """Форматирование item для CSV с сохранением структуры складов."""
         csv_item = {
             'category': item.get('category', ''),
             'product_code': item.get('product_code', ''),
@@ -77,7 +77,7 @@ class CSVExporter(BaseExporter):
         return csv_item
 
     def _format_unit(self, unit):
-        """Форматирование единицы измерения для CSV"""
+        """Форматирование единицы измерения для CSV."""
         if isinstance(unit, list):
             return '; '.join(unit)
         return unit

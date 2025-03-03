@@ -6,10 +6,10 @@ from .base import BaseExporter
 
 
 class PlaywrightCSVExporter(BaseExporter):
-    """CSV экспортер специально для пауков, использующих Playwright"""
+    """CSV экспортер специально для пауков, использующих Playwright."""
 
     def open_spider(self, spider):
-        """Инициализация экспортера при старте паука"""
+        """Инициализация экспортера при старте паука."""
         filename = self._get_filename(spider.name, 'csv')
         self.files[spider] = open(filename, 'w', newline='', encoding='utf-8')
 
@@ -33,7 +33,7 @@ class PlaywrightCSVExporter(BaseExporter):
         self.logger.info(f"Начало записи в CSV файл: {filename}")
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
-        """Обработка и запись item в CSV файл"""
+        """Обработка и запись item в CSV файл."""
         try:
             csv_item = self._prepare_csv_item(item)
 
@@ -46,7 +46,7 @@ class PlaywrightCSVExporter(BaseExporter):
         return item
 
     def _prepare_csv_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        """Подготовка item для записи в CSV файл"""
+        """Подготовка item для записи в CSV файл."""
         csv_item = {}
 
         csv_item['category'] = item.get('category', '')
@@ -66,7 +66,7 @@ class PlaywrightCSVExporter(BaseExporter):
         return csv_item
 
     def _format_unit(self, unit):
-        """Форматирование единицы измерения"""
+        """Форматирование единицы измерения."""
         if isinstance(unit, list):
             return '; '.join(unit)
         return str(unit)
