@@ -216,7 +216,19 @@ class FordaSpider(BaseCompetitorSpider):
                     store_name = store_info.get('name', 'Основной')
                     rest_qty = warehouse.get('rest', 0)
 
-                    # Добавляем информацию о складе
+                    # Добавляем информацию о местном складе
+                    stocks.append({
+                        'stock': store_name,
+                        'quantity': rest_qty,
+                        'price': product_price
+                    })
+
+                for rest in product.get('rests',[]):
+                    store_info = rest.get('store', {})
+                    store_name = store_info.get('name', 'На других')
+                    rest_qty = rest.get('rest', 0)
+
+                    # Добавляем информацию о других складах
                     stocks.append({
                         'stock': store_name,
                         'quantity': rest_qty,
