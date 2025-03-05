@@ -13,6 +13,7 @@ class FordaSpider(BaseCompetitorSpider):
     name = "forda"
     allowed_domains = ["forda.ru", "www.forda.ru"]
     start_urls = ["https://www.forda.ru/katalog/"]
+    local_warehouses = ["Подольск", "Подольск-транзит", "Москва"]
 
     # Исключаем категории из парсинга
     excluded_categories = ['Новинки', 'Распродажа']
@@ -222,18 +223,19 @@ class FordaSpider(BaseCompetitorSpider):
                         'quantity': rest_qty,
                         'price': product_price
                     })
-
+                    
                 for rest in product.get('rests',[]):
                     store_info = rest.get('store', {})
                     store_name = store_info.get('name', 'На других')
                     rest_qty = rest.get('rest', 0)
 
                     # Добавляем информацию о других складах
-                    stocks.append({
-                        'stock': store_name,
-                        'quantity': rest_qty,
-                        'price': product_price
-                    })
+                    if store_name not in self.local_warehouses:
+                        stocks.append({
+                            'stock': store_name,
+                            'quantity': rest_qty,
+                            'price': product_price
+                        })
 
                 # Логируем информацию о найденных складах
                 self.logger.info(
