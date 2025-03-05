@@ -269,7 +269,7 @@ class TdpplSpider(BaseCompetitorSpider):
 
         try:
             # Очищаем текст от неразрывных пробелов
-            price_text = price_text.replace('\xa0', ' ').strip()
+            price_text = price_text.replace('\xa0', '').strip()
 
             # Разделяем на цену и валюту
             parts = price_text.split()
