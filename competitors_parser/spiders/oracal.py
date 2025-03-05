@@ -196,7 +196,6 @@ class OracalSpider(BaseCompetitorSpider):
                     'width': width,
                     'length': length,
                     'height': None,
-                    'url': response.url
                 }
                 time.sleep(0.5)
 
