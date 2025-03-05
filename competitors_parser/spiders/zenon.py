@@ -25,22 +25,35 @@ class ZenonSpider(BaseCompetitorSpider):
         self.logger.info('Парсим ссылки на категории из каталога')
 
         catalog = response.css('div#catalog')
-        category_links = catalog.css('div.box a::attr(href)').getall()
+        all_category = catalog.css('div.box')
 
-        if not category_links:
-            self.logger.info('Ссылки на категории не найдены')
+        if not all_category:
+            self.logger.info('Категории не найдены')
             return
 
-        for category_link in category_links:
-            self.logger.info(f'Найдена категория: {category_link}')
-            yield Request(
-                url=response.urljoin(category_link),
-                callback=self.parse_sub_category
-            )
+        for category in all_category:
+            category_name = category.css('a::text').get()
+            if category_name:
+                category_name = category_name.strip()
+                category_link = category.css('a::attr(href)').get()
+                self.logger.info(
+                    f'Найдена категория: {category_name} ({category_link})'
+                    )
+                yield Request(
+                    url=response.urljoin(category_link),
+                    callback=self.parse_sub_category,
+                    cb_kwargs={'parent_category': category_name}
+                )
 
-    def parse_sub_category(self, response: Response) -> Iterator[Request]:
+    def parse_sub_category(
+            self,
+            response: Response,
+            parent_category: str = ""
+            ) -> Iterator[Request]:
         """Парсим ссылки на подкатегории."""
-        self.logger.info('Парсим ссылки на подкатегории')
+        self.logger.info(
+            f'Парсим ссылки на подкатегории для {parent_category}'
+            )
 
         sub_category = response.css('div.filter_b.filter_b_catalog')
         sub_category_links = sub_category.css(
@@ -51,19 +64,33 @@ class ZenonSpider(BaseCompetitorSpider):
             self.logger.info('Ссылки на подкатегории не найдены')
             # Если подкатегорий нет,
             # обрабатываем текущую страницу как список товаров
-            yield from self.parse_product_list(response)
+            yield from self.parse_product_list(response, parent_category)
             return
 
         for sub_category_url in sub_category_links:
             self.logger.info(f'Найдена подкатегория: {sub_category_url}')
             yield Request(
                 url=response.urljoin(sub_category_url),
-                callback=self.parse_product_list
+                callback=self.parse_product_list,
+                cb_kwargs={'parent_category': parent_category}
             )
 
-    def parse_product_list(self, response: Response) -> Iterator[Request]:
+    def parse_product_list(
+            self,
+            response: Response,
+            parent_category: str = ""
+            ) -> Iterator[Request]:
         """Парсим ссылки на товары в подкатегории."""
-        category = self._extract_category(response)
+        current_category = self._extract_category(response)
+
+        # Формируем полную категорию, включая родительскую
+        if parent_category and current_category:
+            category = f"{parent_category} > {current_category}"
+        elif parent_category:
+            category = parent_category
+        else:
+            category = current_category
+
         self.logger.info(
             f"Обрабатываем категорию: {category} ({response.url})"
             )
@@ -93,7 +120,8 @@ class ZenonSpider(BaseCompetitorSpider):
             self.logger.info(f'Переход на следующую страницу: {next_page}')
             yield Request(
                 url=response.urljoin(next_page),
-                callback=self.parse_product_list
+                callback=self.parse_product_list,
+                cb_kwargs={'parent_category': parent_category}
             )
 
     def parse_product(
@@ -206,4 +234,24 @@ class ZenonSpider(BaseCompetitorSpider):
         breadcrumbs = response.css('div.breadcrumbs a::text').getall()
         if len(breadcrumbs) > 1:
             return self.clean_text(breadcrumbs[-1])
-        return "Неизвестная категория"
+        elif len(breadcrumbs) == 1:
+            return self.clean_text(breadcrumbs[0])
+
+        # Пробуем получить из заголовка страницы
+        page_title = response.css('h1.page-title::text').get()
+        if page_title:
+            return self.clean_text(page_title)
+
+        title = response.css('title::text').get()
+        if title:
+            parts = title.split('-')
+            if len(parts) > 1:
+                return self.clean_text(parts[0])
+
+        path_parts = response.url.split('/')
+        if len(path_parts) > 4:
+            category_from_url = path_parts[4].replace('-', ' ').title()
+            if category_from_url:
+                return category_from_url
+
+        return ""
