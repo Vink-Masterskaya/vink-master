@@ -223,8 +223,8 @@ class FordaSpider(BaseCompetitorSpider):
                         'quantity': rest_qty,
                         'price': product_price
                     })
-                    
-                for rest in product.get('rests',[]):
+
+                for rest in product.get('rests', []):
                     store_info = rest.get('store', {})
                     store_name = store_info.get('name', 'На других')
                     rest_qty = rest.get('rest', 0)
