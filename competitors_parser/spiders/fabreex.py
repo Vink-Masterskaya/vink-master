@@ -4,6 +4,7 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
+from ..constants import RUBLE
 
 
 class FabreexSpider(BaseCompetitorSpider):
@@ -86,7 +87,7 @@ class FabreexSpider(BaseCompetitorSpider):
 
             # Если цена по запросу, добавляем эту информацию в название
             if is_price_on_request:
-                name = f"{name} (Цена: По запросу)"
+                name = f'{name} (Цена: По запросу)'
 
             char_keys = response.xpath(
                 '//*[@class="sz-text-large"]/text()').getall()
@@ -105,7 +106,7 @@ class FabreexSpider(BaseCompetitorSpider):
             current_color = color.css('a::attr(uk-tooltip)').get()
             current_color = self.clean_text(
                 current_color
-            ) if current_color else "Стандартный"
+            ) if current_color else 'Стандартный'
 
             yield self._create_item(
                 name=name,
@@ -129,7 +130,7 @@ class FabreexSpider(BaseCompetitorSpider):
 
         except Exception as e:
             self.logger.error(
-                f"Error parsing product {response.url}: {str(e)}"
+                f'Error parsing product {response.url}: {str(e)}'
             )
 
     def _create_item(
@@ -157,9 +158,9 @@ class FabreexSpider(BaseCompetitorSpider):
         quantity_text = response.css('input[type="number"]::attr(max)').get()
         quantity = self.extract_stock(quantity_text) if quantity_text else 0
 
-        width = f"См: {width_value}" if width_value else None
+        width = f'См: {width_value}' if width_value else None
 
-        full_name = f"{name} ({current_color})"
+        full_name = f'{name} ({current_color})'
 
         stocks = [{
             'stock': 'Москва',
@@ -174,7 +175,7 @@ class FabreexSpider(BaseCompetitorSpider):
             'price': price,
             'stocks': stocks,
             'unit': unit,
-            'currency': 'RUB',
+            'currency': RUBLE,
             'weight': None,
             'length': None,
             'width': width,

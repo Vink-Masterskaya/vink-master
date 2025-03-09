@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional, Union
 
+from ..constants import THINGS, RUBLE
 from scrapy.exceptions import DropItem
 
 
@@ -18,14 +19,14 @@ class ValidationPipeline:
         # Проверка обязательных полей
         for field in self.required_fields:
             if not item.get(field):
-                msg = f"Missing required field: {field}"
+                msg = f'Missing required field: {field}'
                 self.logger.warning(msg)
                 raise DropItem(msg)
 
         # Специальная проверка поля price
         price = item.get('price')
         if price is None:  # Только None считается отсутствующим
-            msg = "Missing required field: price"
+            msg = 'Missing required field: price'
             self.logger.warning(msg)
             raise DropItem(msg)
 
@@ -37,7 +38,7 @@ class ValidationPipeline:
             'price': self._get_float_value(item, 'price', 0.0),
             'stocks': self._normalize_stocks(item),
             'unit': self._normalize_unit(item),
-            'currency': self._get_str_value(item, 'currency', 'RUB'),
+            'currency': self._get_str_value(item, 'currency', RUBLE),
             'url': self._get_str_value(item, 'url', ''),
             'weight': self._get_str_value(item, 'weight', None),
             'length': self._get_str_value(item, 'length', None),
@@ -76,7 +77,7 @@ class ValidationPipeline:
             return float(value)
         except (ValueError, TypeError):
             self.logger.warning(
-                f"Invalid value for {key}: {value}, using default {default}"
+                f'Invalid value for {key}: {value}, using default {default}'
                 )
             return default
 
@@ -133,7 +134,7 @@ class ValidationPipeline:
             return int(float(value))
         except (ValueError, TypeError):
             self.logger.warning(
-                f"Invalid value for {key}: {value}, using default {default}"
+                f'Invalid value for {key}: {value}, using default {default}'
                 )
             return default
 
@@ -143,7 +144,7 @@ class ValidationPipeline:
 
         # Если единицы измерения нет, возвращаем значение по умолчанию
         if not unit:
-            return 'шт'
+            return THINGS
 
         # Если единица измерения уже в виде списка, возвращаем как есть
         if isinstance(unit, list):

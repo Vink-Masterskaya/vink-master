@@ -6,13 +6,14 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
+from ..constants import THINGS, RUBLE
 
 
 class OracalSpider(BaseCompetitorSpider):
     """Паук для парсинга сайта oracal-online.ru."""
-    name = "oracal"
-    allowed_domains = ["oracal-online.ru"]
-    start_urls = ["https://api.oracal-online.ru/api/category/list/"]
+    name = 'oracal'
+    allowed_domains = ['oracal-online.ru']
+    start_urls = ['https://api.oracal-online.ru/api/category/list/']
 
     # API URL шаблоны
     BASE_PROD_LIST_URL = 'https://api.oracal-online.ru/api/product/category?page=1&slug='
@@ -22,15 +23,15 @@ class OracalSpider(BaseCompetitorSpider):
 
     # Настройки для API запросов
     custom_settings = {
-        "DOWNLOAD_DELAY": 0.5,
-        "CONCURRENT_REQUESTS": 8,
-        "RETRY_ENABLED": True,
-        "RETRY_TIMES": 3,
+        'DOWNLOAD_DELAY': 0.5,
+        'CONCURRENT_REQUESTS': 8,
+        'RETRY_ENABLED': True,
+        'RETRY_TIMES': 3,
     }
 
     def parse(self, response: Response) -> Iterator[Request]:
         """Парсинг категорий с API."""
-        self.logger.info("Начинаем парсинг категорий Oracal")
+        self.logger.info('Начинаем парсинг категорий Oracal')
 
         try:
             result = json.loads(response.body)
@@ -39,7 +40,7 @@ class OracalSpider(BaseCompetitorSpider):
                 subcats = category.get('subCategory', [])
                 category_title = category.get('title', '')
 
-                self.logger.info(f"Обрабатываем категорию: {category_title}")
+                self.logger.info(f'Обрабатываем категорию: {category_title}')
 
                 for sub in subcats:
                     sub_slug = sub.get('slug', '')
@@ -62,9 +63,9 @@ class OracalSpider(BaseCompetitorSpider):
                     time.sleep(0.1)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
+            self.logger.error(f'Ошибка декодирования JSON: {str(e)}')
         except Exception as e:
-            self.logger.error(f"Ошибка при парсинге категорий: {str(e)}")
+            self.logger.error(f'Ошибка при парсинге категорий: {str(e)}')
 
     def parse_category(
             self,
@@ -78,7 +79,7 @@ class OracalSpider(BaseCompetitorSpider):
             data = result.get('data', {}).get('subCategories', [])
 
             if len(data) > 0:
-                self.logger.info(f"Найдено {len(data)} подкатегорий в {cat}")
+                self.logger.info(f'Найдено {len(data)} подкатегорий в {cat}')
 
                 for subcategory in data:
                     sub_slug = subcategory.get('slug', '')
@@ -110,9 +111,9 @@ class OracalSpider(BaseCompetitorSpider):
                 time.sleep(0.3)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
+            self.logger.error(f'Ошибка декодирования JSON: {str(e)}')
         except Exception as e:
-            self.logger.error(f"Ошибка при парсинге категории {cat}: {str(e)}")
+            self.logger.error(f'Ошибка при парсинге категории {cat}: {str(e)}')
 
     def parse_product_list(
             self,
@@ -124,7 +125,7 @@ class OracalSpider(BaseCompetitorSpider):
             result = json.loads(response.body)
             products = result.get('data', [])
 
-            self.logger.info(f"Найдено {len(products)} товаров в {cat}")
+            self.logger.info(f'Найдено {len(products)} товаров в {cat}')
 
             for product in products:
                 product_slug = product.get('slug', '')
@@ -144,9 +145,9 @@ class OracalSpider(BaseCompetitorSpider):
                 time.sleep(0.3)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
+            self.logger.error(f'Ошибка декодирования JSON: {str(e)}')
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке списка товаров: {str(e)}")
+            self.logger.error(f'Ошибка при обработке списка товаров: {str(e)}')
 
     def parse_product(
             self,
@@ -171,9 +172,9 @@ class OracalSpider(BaseCompetitorSpider):
                 properties = product.get('properties', [])
                 color = weight = width = length = None
 
-                for prop in properties:
-                    prop_name = prop.get('name', '').lower()
-                    prop_value = prop.get('value', '')
+                for property in properties:
+                    prop_name = property.get('name', '').lower()
+                    prop_value = property.get('value', '')
 
                     if 'цвет' in prop_name:
                         color = prop_value
@@ -190,8 +191,8 @@ class OracalSpider(BaseCompetitorSpider):
                     'name': product_title,
                     'price': price,
                     'stocks': stocks,
-                    'unit': product.get('unit', 'шт'),
-                    'currency': 'RUB',
+                    'unit': product.get('unit', THINGS),
+                    'currency': RUBLE,
                     'weight': weight,
                     'width': width,
                     'length': length,
@@ -200,9 +201,9 @@ class OracalSpider(BaseCompetitorSpider):
                 time.sleep(0.5)
 
         except json.JSONDecodeError as e:
-            self.logger.error(f"Ошибка декодирования JSON: {str(e)}")
+            self.logger.error(f'Ошибка декодирования JSON: {str(e)}')
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке товара: {str(e)}")
+            self.logger.error(f'Ошибка при обработке товара: {str(e)}')
 
     def _get_price(self, product: Dict[str, Any]) -> float:
         """Получение цены товара."""
@@ -216,7 +217,7 @@ class OracalSpider(BaseCompetitorSpider):
         try:
             return float(main_price)
         except (ValueError, TypeError):
-            self.logger.warning(f"Ошибка преобразования цены: {main_price}")
+            self.logger.warning(f'Ошибка преобразования цены: {main_price}')
             return 0.0
 
     def _get_normalized_stocks(

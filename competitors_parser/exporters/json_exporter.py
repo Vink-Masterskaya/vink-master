@@ -1,6 +1,7 @@
 import json
 from collections import OrderedDict
 from typing import Any, Dict
+from ..constants import RUBLE
 
 from .base import BaseExporter
 
@@ -11,7 +12,7 @@ class JSONExporter(BaseExporter):
     def open_spider(self, spider):
         """Инициализация экспортера при старте паука."""
         self.items = []
-        self.logger.info(f"Инициализация JSON экспортера для {spider.name}")
+        self.logger.info(f'Инициализация JSON экспортера для {spider.name}')
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Обработка и сохранение item для последующей записи в JSON."""
@@ -23,7 +24,7 @@ class JSONExporter(BaseExporter):
             ordered_item['price'] = item.get('price', 0.0)
             ordered_item['stocks'] = item.get('stocks', [])
             ordered_item['unit'] = item.get('unit', '')
-            ordered_item['currency'] = item.get('currency', 'RUB')
+            ordered_item['currency'] = item.get('currency', RUBLE)
             ordered_item['weight'] = item.get('weight', None)
             ordered_item['length'] = item.get('length', None)
             ordered_item['width'] = item.get('width', None)
@@ -33,7 +34,7 @@ class JSONExporter(BaseExporter):
             self.items.append(ordered_item)
 
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке item для JSON: {str(e)}")
+            self.logger.error(f'Ошибка при обработке item для JSON: {str(e)}')
 
         return item
 
@@ -43,7 +44,7 @@ class JSONExporter(BaseExporter):
             filename = self._get_filename(spider.name, 'json')
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(self.items, f, ensure_ascii=False, indent=2)
-            self.logger.info(f"Файл {filename} успешно сохранен")
+            self.logger.info(f'Файл {filename} успешно сохранен')
 
         except Exception as e:
-            self.logger.error(f"Ошибка при сохранении JSON: {str(e)}")
+            self.logger.error(f'Ошибка при сохранении JSON: {str(e)}')

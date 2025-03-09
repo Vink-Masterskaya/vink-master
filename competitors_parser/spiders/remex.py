@@ -4,13 +4,14 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
+from ..constants import RUBLE
 
 
 class RemexSpider(BaseCompetitorSpider):
     """Паук для парсинга сайта remex.ru."""
-    name = "remex"
-    allowed_domains = ["remex.ru"]
-    start_urls = ["https://www.remex.ru/price"]
+    name = 'remex'
+    allowed_domains = ['remex.ru']
+    start_urls = ['https://www.remex.ru/price']
 
     category_mapping = {
         'мобильные': 'мобильные стенды',
@@ -113,7 +114,7 @@ class RemexSpider(BaseCompetitorSpider):
                     'price': price
                 }],
                 'unit': unit,
-                'currency': 'RUB',
+                'currency': RUBLE,
                 'weight': None,
                 'length': None,
                 'width': None,

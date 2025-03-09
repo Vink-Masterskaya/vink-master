@@ -3,6 +3,7 @@ import json
 from typing import Any, Dict
 
 from .base import BaseExporter
+from ..constants import THINGS, RUBLE
 
 
 class PlaywrightCSVExporter(BaseExporter):
@@ -30,7 +31,7 @@ class PlaywrightCSVExporter(BaseExporter):
             delimiter=';'
         )
         self.exporters[spider].writeheader()
-        self.logger.info(f"Начало записи в CSV файл: {filename}")
+        self.logger.info(f'Начало записи в CSV файл: {filename}')
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Обработка и запись item в CSV файл."""
@@ -38,10 +39,10 @@ class PlaywrightCSVExporter(BaseExporter):
             csv_item = self._prepare_csv_item(item)
 
             self.exporters[spider].writerow(csv_item)
-            self.logger.info(f"Товар {item.get('name', '')} записан в CSV")
+            self.logger.info(f'Товар {item.get("name", "")} записан в CSV')
 
         except Exception as e:
-            self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
+            self.logger.error(f'Ошибка при записи в CSV: {str(e)}')
 
         return item
 
@@ -53,8 +54,8 @@ class PlaywrightCSVExporter(BaseExporter):
         csv_item['product_code'] = item.get('product_code', '')
         csv_item['name'] = item.get('name', '')
         csv_item['price'] = item.get('price', 0.0)
-        csv_item['unit'] = self._format_unit(item.get('unit', 'шт'))
-        csv_item['currency'] = item.get('currency', 'RUB')
+        csv_item['unit'] = self._format_unit(item.get('unit', THINGS))
+        csv_item['currency'] = item.get('currency', RUBLE)
         csv_item['url'] = item.get('url', '')
 
         stocks = item.get('stocks', [])

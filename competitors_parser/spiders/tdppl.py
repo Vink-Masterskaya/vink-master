@@ -7,6 +7,7 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
+from ..constants import RUBLE
 
 
 class PappilonsCategoryParse:
@@ -33,16 +34,16 @@ class PappilonsCategoryParse:
         links = []
         try:
             with sync_playwright() as playwright:
-                self.logger.info(f"Запуск Playwright для URL: {self.url}")
+                self.logger.info(f'Запуск Playwright для URL: {self.url}')
                 browser = playwright.chromium.launch(headless=True)
                 context = browser.new_context()
                 page = context.new_page()
                 i = 1
 
                 while True:
-                    pagination_url = f"{self.url}?PAGEN_1={i}&AJAX=Y"
+                    pagination_url = f'{self.url}?PAGEN_1={i}&AJAX=Y'
                     self.logger.info(
-                        f"Обработка страницы пагинации: {pagination_url}"
+                        f'Обработка страницы пагинации: {pagination_url}'
                         )
                     page.goto(pagination_url)
 
@@ -55,18 +56,18 @@ class PappilonsCategoryParse:
                     # Проверяем, не дошли ли мы до конца пагинации
                     if not new_links:
                         self.logger.info(
-                            f"Пустая страница пагинации: {pagination_url}"
+                            f'Пустая страница пагинации: {pagination_url}'
                             )
                         break
 
                     if new_links and new_links[0] in links:
                         self.logger.info(
-                            f"Достигнут конец пагинации на странице {i}"
+                            f'Достигнут конец пагинации на странице {i}'
                             )
                         break
                     else:
                         self.logger.info(
-                            f"Найдено {len(new_links)} товаров на странице {i}"
+                            f'Найдено {len(new_links)} товаров на странице {i}'
                             )
                         links.extend(new_links)
                         i += 1
@@ -76,20 +77,20 @@ class PappilonsCategoryParse:
                 browser.close()
 
                 self.logger.info(
-                    f"Всего собрано {len(links)} ссылок на товары"
+                    f'Всего собрано {len(links)} ссылок на товары'
                     )
                 return links
         except Exception as e:
             self.logger.error(
-                f"Ошибка при парсинге категории {self.url}: {str(e)}"
+                f'Ошибка при парсинге категории {self.url}: {str(e)}'
                 )
             return links
 
 
 class TdpplSpider(BaseCompetitorSpider):
-    name = "tdppl"
-    allowed_domains = ["tdppl.ru"]
-    start_urls = ["https://tdppl.ru/catalog/"]
+    name = 'tdppl'
+    allowed_domains = ['tdppl.ru']
+    start_urls = ['https://tdppl.ru/catalog/']
 
     # Настройки специальных экспортеров для Playwright
     custom_settings = {
@@ -181,7 +182,7 @@ class TdpplSpider(BaseCompetitorSpider):
             unit = response.css(
                 'span.product_card__block_buy_measure::text'
                 ).get('')
-            unit = self.clean_text(unit) if unit else "шт"
+            unit = self.clean_text(unit) if unit else 'шт'
 
             # Устанавливаем цену для всех складов
             for stock in stocks:
@@ -201,7 +202,7 @@ class TdpplSpider(BaseCompetitorSpider):
 
         except Exception as e:
             self.logger.error(
-                f"Ошибка при обработке товара {response.url}: {str(e)}"
+                f'Ошибка при обработке товара {response.url}: {str(e)}'
                 )
 
     def _extract_stocks(self, script_content: str) -> List[Dict[str, Any]]:
@@ -233,7 +234,7 @@ class TdpplSpider(BaseCompetitorSpider):
             # Преобразуем значения наличия в читаемый формат и количество
             match_stock_corrected = []
             for stock in match_stock:
-                if "many" in stock:
+                if 'many' in stock:
                     quantity = 10  # Примерное количество, если "В наличии"
                 else:
                     quantity = 0
@@ -249,7 +250,7 @@ class TdpplSpider(BaseCompetitorSpider):
 
         except Exception as e:
             self.logger.error(
-                f"Ошибка при извлечении информации о складах: {str(e)}"
+                f'Ошибка при извлечении информации о складах: {str(e)}'
                 )
 
         return stocks
@@ -265,7 +266,7 @@ class TdpplSpider(BaseCompetitorSpider):
             tuple: (цена(float), валюта(str)).
         """
         if not price_text:
-            return 0.0, 'RUB'
+            return 0.0, RUBLE
 
         try:
             # Очищаем текст от неразрывных пробелов
@@ -282,16 +283,16 @@ class TdpplSpider(BaseCompetitorSpider):
 
                 # Стандартизируем валюту
                 if currency in ['р.', 'руб.', 'руб', 'р']:
-                    currency = 'RUB'
+                    currency = RUBLE
 
                 return price, currency
             else:
                 # Если не удалось разделить, пробуем извлечь только цену
                 price = self.extract_price(price_text)
-                return price, 'RUB'
+                return price, RUBLE
 
         except Exception as e:
             self.logger.error(
                 f"Ошибка при извлечении цены и валюты из '{price_text}': {str(e)}"
                 )
-            return 0.0, 'RUB'
+            return 0.0, RUBLE
