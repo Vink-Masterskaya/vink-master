@@ -7,7 +7,6 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
-from ..constants import RUBLE
 
 
 class PappilonsCategoryParse:
@@ -266,7 +265,7 @@ class TdpplSpider(BaseCompetitorSpider):
             tuple: (цена(float), валюта(str)).
         """
         if not price_text:
-            return 0.0, RUBLE
+            return 0.0, 'RUB'
 
         try:
             # Очищаем текст от неразрывных пробелов
@@ -283,16 +282,16 @@ class TdpplSpider(BaseCompetitorSpider):
 
                 # Стандартизируем валюту
                 if currency in ['р.', 'руб.', 'руб', 'р']:
-                    currency = RUBLE
+                    currency = 'RUB'
 
                 return price, currency
             else:
                 # Если не удалось разделить, пробуем извлечь только цену
                 price = self.extract_price(price_text)
-                return price, RUBLE
+                return price, 'RUB'
 
         except Exception as e:
             self.logger.error(
                 f"Ошибка при извлечении цены и валюты из '{price_text}': {str(e)}"
                 )
-            return 0.0, RUBLE
+            return 0.0, 'RUB'
