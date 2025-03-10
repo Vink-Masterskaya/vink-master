@@ -3,7 +3,6 @@ from collections import OrderedDict
 from typing import Any, Dict
 
 from .base import BaseExporter
-from ..constants import THINGS, RUBLE
 
 
 class PlaywrightJSONExporter(BaseExporter):
@@ -26,8 +25,8 @@ class PlaywrightJSONExporter(BaseExporter):
             stocks = item.get('stocks', [])
             ordered_item['stocks'] = stocks
 
-            ordered_item['unit'] = item.get('unit', THINGS)
-            ordered_item['currency'] = item.get('currency', RUBLE)
+            ordered_item['unit'] = item.get('unit', 'шт')
+            ordered_item['currency'] = item.get('currency', 'RUB')
             ordered_item['url'] = item.get('url', '')
 
             self.items.append(ordered_item)

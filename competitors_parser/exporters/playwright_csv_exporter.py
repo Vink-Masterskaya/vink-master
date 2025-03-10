@@ -3,7 +3,6 @@ import json
 from typing import Any, Dict
 
 from .base import BaseExporter
-from ..constants import THINGS, RUBLE
 
 
 class PlaywrightCSVExporter(BaseExporter):
@@ -54,8 +53,8 @@ class PlaywrightCSVExporter(BaseExporter):
         csv_item['product_code'] = item.get('product_code', '')
         csv_item['name'] = item.get('name', '')
         csv_item['price'] = item.get('price', 0.0)
-        csv_item['unit'] = self._format_unit(item.get('unit', THINGS))
-        csv_item['currency'] = item.get('currency', RUBLE)
+        csv_item['unit'] = self._format_unit(item.get('unit', 'шт'))
+        csv_item['currency'] = item.get('currency', 'RUB')
         csv_item['url'] = item.get('url', '')
 
         stocks = item.get('stocks', [])

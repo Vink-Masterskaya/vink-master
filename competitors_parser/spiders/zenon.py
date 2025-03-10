@@ -4,7 +4,6 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
-from ..constants import RUBLE
 
 
 class ZenonSpider(BaseCompetitorSpider):
@@ -147,7 +146,7 @@ class ZenonSpider(BaseCompetitorSpider):
             currency = ''
             if price_rub and price_kop:
                 price = f'{price_rub}{price_kop}'
-                currency = RUBLE
+                currency = 'RUB'
             elif price_request:
                 price = 0.0  # Цена по запросу устанавливается как 0
                 self.logger.info(f'Цена по запросу для товара {product_code}')
@@ -217,7 +216,7 @@ class ZenonSpider(BaseCompetitorSpider):
                 'price': price_float,
                 'stocks': stocks,
                 'unit': unit,
-                'currency': currency if currency else RUBLE,
+                'currency': currency if currency else 'RUB',
                 'weight': weight,
                 'length': length,
                 'width': width,

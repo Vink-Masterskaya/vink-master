@@ -3,7 +3,6 @@ import json
 from typing import Any, Dict
 
 from .base import BaseExporter
-from ..constants import THINGS, RUBLE
 
 
 class CSVExporter(BaseExporter):
@@ -56,8 +55,8 @@ class CSVExporter(BaseExporter):
             'product_code': item.get('product_code', ''),
             'name': item.get('name', ''),
             'price': item.get('price', 0.0),
-            'currency': item.get('currency', RUBLE),
-            'unit': self._format_unit(item.get('unit', THINGS)),
+            'currency': item.get('currency', 'RUB'),
+            'unit': self._format_unit(item.get('unit', 'шт')),
             'weight': item.get('weight', ''),
             'length': item.get('length', ''),
             'width': item.get('width', ''),

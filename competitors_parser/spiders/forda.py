@@ -6,7 +6,6 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
-from ..constants import THINGS, RUBLE
 
 
 class FordaSpider(BaseCompetitorSpider):
@@ -121,10 +120,7 @@ class FordaSpider(BaseCompetitorSpider):
                 stocks = product_variant.get('stocks', [])
 
                 # Формируем полное название товара
-                if variant_name and variant_name != '':
-                    name = f'{" " + variant_name}'
-                else:
-                    name = ''
+                name = ' ' + variant_name if variant_name and variant_name != '' else ''
                 full_name = f'{product_name}{name}'
 
                 # Проверка наличия складов
@@ -141,8 +137,8 @@ class FordaSpider(BaseCompetitorSpider):
                     'name': full_name,
                     'price': price,
                     'stocks': stocks,
-                    'unit': THINGS,
-                    'currency': RUBLE,
+                    'unit': 'шт',
+                    'currency': 'RUB',
                     'url': response.url
                 }
 

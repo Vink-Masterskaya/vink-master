@@ -6,7 +6,6 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
-from ..constants import THINGS, RUBLE
 
 
 class OracalSpider(BaseCompetitorSpider):
@@ -191,8 +190,8 @@ class OracalSpider(BaseCompetitorSpider):
                     'name': product_title,
                     'price': price,
                     'stocks': stocks,
-                    'unit': product.get('unit', THINGS),
-                    'currency': RUBLE,
+                    'unit': product.get('unit', 'шт'),
+                    'currency': 'RUB',
                     'weight': weight,
                     'width': width,
                     'length': length,

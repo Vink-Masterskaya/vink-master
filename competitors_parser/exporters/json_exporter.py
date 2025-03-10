@@ -1,7 +1,6 @@
 import json
 from collections import OrderedDict
 from typing import Any, Dict
-from ..constants import RUBLE
 
 from .base import BaseExporter
 
@@ -24,7 +23,7 @@ class JSONExporter(BaseExporter):
             ordered_item['price'] = item.get('price', 0.0)
             ordered_item['stocks'] = item.get('stocks', [])
             ordered_item['unit'] = item.get('unit', '')
-            ordered_item['currency'] = item.get('currency', RUBLE)
+            ordered_item['currency'] = item.get('currency', 'RUB')
             ordered_item['weight'] = item.get('weight', None)
             ordered_item['length'] = item.get('length', None)
             ordered_item['width'] = item.get('width', None)

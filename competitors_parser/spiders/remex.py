@@ -4,7 +4,6 @@ from scrapy import Request
 from scrapy.http import Response
 
 from .base import BaseCompetitorSpider
-from ..constants import RUBLE
 
 
 class RemexSpider(BaseCompetitorSpider):
@@ -114,7 +113,7 @@ class RemexSpider(BaseCompetitorSpider):
                     'price': price
                 }],
                 'unit': unit,
-                'currency': RUBLE,
+                'currency': 'RUB',
                 'weight': None,
                 'length': None,
                 'width': None,
