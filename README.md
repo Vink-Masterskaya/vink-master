@@ -32,6 +32,10 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
+Дополнительно к зависимостям нужно установить
+```bash
+playwright install
+```
 
 ### Структура проекта
 
