@@ -10,10 +10,10 @@ from .base import BaseCompetitorSpider
 
 class FordaSpider(BaseCompetitorSpider):
     """Паук для парсинга сайта forda.ru."""
-    name = "forda"
-    allowed_domains = ["forda.ru", "www.forda.ru"]
-    start_urls = ["https://www.forda.ru/katalog/"]
-    local_warehouses = ["Подольск", "Подольск-транзит", "Москва"]
+    name = 'forda'
+    allowed_domains = ['forda.ru', 'www.forda.ru']
+    start_urls = ['https://www.forda.ru/katalog/']
+    local_warehouses = ['Подольск', 'Подольск-транзит', 'Москва']
 
     # Исключаем категории из парсинга
     excluded_categories = ['Новинки', 'Распродажа']
@@ -120,7 +120,8 @@ class FordaSpider(BaseCompetitorSpider):
                 stocks = product_variant.get('stocks', [])
 
                 # Формируем полное название товара
-                full_name = f"{product_name}{' ' + variant_name if variant_name and variant_name != '' else ''}"
+                name = ' ' + variant_name if variant_name and variant_name != '' else ''
+                full_name = f'{product_name}{name}'
 
                 # Проверка наличия складов
                 if not stocks:
@@ -148,7 +149,7 @@ class FordaSpider(BaseCompetitorSpider):
 
         except Exception as e:
             self.logger.error(
-                f"Error processing product {response.url}: {str(e)}"
+                f'Error processing product {response.url}: {str(e)}'
                 )
 
     def _get_api_id(self, response: Response) -> Optional[str]:
@@ -165,7 +166,7 @@ class FordaSpider(BaseCompetitorSpider):
             if start_idx != -1 and end_idx != -1:
                 return script_text[start_idx + 1:end_idx].strip()
         except Exception as e:
-            self.logger.error(f"Error extracting API ID: {str(e)}")
+            self.logger.error(f'Error extracting API ID: {str(e)}')
 
         return None
 
@@ -181,10 +182,10 @@ class FordaSpider(BaseCompetitorSpider):
             start_idx = script_text.find('offer_id:') + 11
             if start_idx != -1:
                 raw_offer_id = script_text[start_idx:start_idx + 50]
-                offer_id = self.clean_text(raw_offer_id.replace("'", ""))
+                offer_id = self.clean_text(raw_offer_id.replace("'", ''))
                 return offer_id
         except Exception as e:
-            self.logger.error(f"Error extracting Offer ID: {str(e)}")
+            self.logger.error(f'Error extracting Offer ID: {str(e)}')
 
         return None
 
@@ -200,7 +201,7 @@ class FordaSpider(BaseCompetitorSpider):
 
             # Проверяем, что данные не пустые
             if not data:
-                self.logger.warning(f"Empty API response for product {api_id}")
+                self.logger.warning(f'Empty API response for product {api_id}')
                 return []
 
             result = []
@@ -252,12 +253,12 @@ class FordaSpider(BaseCompetitorSpider):
             return result
 
         except requests.RequestException as e:
-            self.logger.error(f"API request error for {api_id}: {str(e)}")
+            self.logger.error(f'API request error for {api_id}: {str(e)}')
         except (ValueError, json.JSONDecodeError) as e:
-            self.logger.error(f"JSON parse error for {api_id}: {str(e)}")
+            self.logger.error(f'JSON parse error for {api_id}: {str(e)}')
         except Exception as e:
             self.logger.error(
-                f"Unexpected error getting stocks for {api_id}: {str(e)}"
+                f'Unexpected error getting stocks for {api_id}: {str(e)}'
                 )
 
         return []

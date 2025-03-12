@@ -20,20 +20,18 @@ class BaseCompetitorSpider(Spider):
 
     # Ключевые слова для цен по запросу
     PRICE_REQUEST_KEYWORDS = [
-        "по запросу", "по заказу", "звоните", "уточняйте",
-        "договорная", "нет в наличии", "недоступно"
+        'по запросу', 'по заказу', 'звоните', 'уточняйте',
+        'договорная', 'нет в наличии', 'недоступно'
     ]
 
     def __init__(self, *args, **kwargs):
         """Инициализация паука."""
         super().__init__(*args, **kwargs)
         self.start_time = datetime.now()
-        self.logger.info(f"Starting spider: {self.name}")
+        self.logger.info(f'Starting spider: {self.name}')
 
     def extract_price(self, price_text: Optional[str]) -> float:
-        """
-        Извлечение цены из текста.
-        """
+        """Извлечение цены из текста."""
         if not price_text:
             return 0.0
 
@@ -41,7 +39,7 @@ class BaseCompetitorSpider(Spider):
         price_text_lower = price_text.lower()
         for keyword in self.PRICE_REQUEST_KEYWORDS:
             if keyword in price_text_lower:
-                self.logger.info(f"Price on request: {price_text}")
+                self.logger.info(f'Price on request: {price_text}')
                 return 0.0
 
         try:
@@ -56,7 +54,7 @@ class BaseCompetitorSpider(Spider):
                 return 0.0
             return float(clean_price)
         except (ValueError, TypeError):
-            self.logger.warning(f"Could not parse price: {price_text}")
+            self.logger.warning(f'Could not parse price: {price_text}')
             return 0.0
 
     def extract_stock(self, value: Optional[str]) -> int:
@@ -69,17 +67,17 @@ class BaseCompetitorSpider(Spider):
             return int(clean_value) if clean_value else 0
         except (ValueError, TypeError):
             self.logger.warning(
-                f"Не удалось преобразовать количество: {value}"
+                f'Не удалось преобразовать количество: {value}'
             )
             return 0
 
     def clean_text(self, text: Optional[str]) -> str:
         """Очистка текста от лишних пробелов и переносов строк."""
         if not text:
-            return ""
+            return ''
 
         # Удаляем лишние пробелы и переносы строк
-        text = " ".join(text.strip().split())
+        text = ' '.join(text.strip().split())
 
         return text
 
@@ -89,13 +87,13 @@ class BaseCompetitorSpider(Spider):
             return None
         if url.startswith('http'):
             return url
-        return (f"https://{self.allowed_domains[0]}"
-                f"{url if url.startswith('/') else '/' + url}")
+        return (f'https://{self.allowed_domains[0]}'
+                f'{url if url.startswith("/") else "/" + url}')
 
     def closed(self, reason: str) -> None:
         """Вызывается при завершении работы паук."""
         duration = datetime.now() - self.start_time
         self.logger.info(
-            f"Паук {self.name} завершил работу. "
-            f"Причина: {reason}. Время работы: {duration}"
+            f'Паук {self.name} завершил работу. '
+            f'Причина: {reason}. Время работы: {duration}'
         )

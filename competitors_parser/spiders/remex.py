@@ -8,9 +8,9 @@ from .base import BaseCompetitorSpider
 
 class RemexSpider(BaseCompetitorSpider):
     """Паук для парсинга сайта remex.ru."""
-    name = "remex"
-    allowed_domains = ["remex.ru"]
-    start_urls = ["https://www.remex.ru/price"]
+    name = 'remex'
+    allowed_domains = ['remex.ru']
+    start_urls = ['https://www.remex.ru/price']
 
     category_mapping = {
         'мобильные': 'мобильные стенды',

@@ -12,13 +12,13 @@ class ErrorHandlerMiddleware:
         """Обработка ответов с ошибками"""
         if response.status >= 400:
             spider.logger.error(
-                f"Got error {response.status} on {request.url}"
+                f'Got error {response.status} on {request.url}'
             )
             # Логируем дополнительную информацию при 403 ошибке
             if response.status == 403:
                 spider.logger.error(
-                    f"Возможно, сайт заблокировал доступ. "
-                    f"Headers: {request.headers}"
+                    f'Возможно, сайт заблокировал доступ. '
+                    f'Headers: {request.headers}'
                 )
         return response
 

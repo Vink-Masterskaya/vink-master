@@ -30,7 +30,7 @@ class PlaywrightCSVExporter(BaseExporter):
             delimiter=';'
         )
         self.exporters[spider].writeheader()
-        self.logger.info(f"Начало записи в CSV файл: {filename}")
+        self.logger.info(f'Начало записи в CSV файл: {filename}')
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Обработка и запись item в CSV файл."""
@@ -38,10 +38,10 @@ class PlaywrightCSVExporter(BaseExporter):
             csv_item = self._prepare_csv_item(item)
 
             self.exporters[spider].writerow(csv_item)
-            self.logger.info(f"Товар {item.get('name', '')} записан в CSV")
+            self.logger.info(f'Товар {item.get("name", "")} записан в CSV')
 
         except Exception as e:
-            self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
+            self.logger.error(f'Ошибка при записи в CSV: {str(e)}')
 
         return item
 

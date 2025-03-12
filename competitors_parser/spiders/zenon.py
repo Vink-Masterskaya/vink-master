@@ -8,16 +8,16 @@ from .base import BaseCompetitorSpider
 
 class ZenonSpider(BaseCompetitorSpider):
     """Паук для парсинга сайта zenonline.ru."""
-    name = "zenon"
-    allowed_domains = ["zenonline.ru"]
-    start_urls = ["https://zenonline.ru/cat/"]
+    name = 'zenon'
+    allowed_domains = ['zenonline.ru']
+    start_urls = ['https://zenonline.ru/cat/']
 
     custom_settings = {
-        "DOWNLOAD_TIMEOUT": 30,
-        "DOWNLOAD_DELAY": 3,
-        "CONCURRENT_REQUESTS": 8,
-        "RETRY_ENABLED": True,
-        "RETRY_TIMES": 2,
+        'DOWNLOAD_TIMEOUT': 30,
+        'DOWNLOAD_DELAY': 3,
+        'CONCURRENT_REQUESTS': 8,
+        'RETRY_ENABLED': True,
+        'RETRY_TIMES': 2,
     }
 
     def parse(self, response: Response) -> Iterator[Request]:
@@ -48,7 +48,7 @@ class ZenonSpider(BaseCompetitorSpider):
     def parse_sub_category(
             self,
             response: Response,
-            parent_category: str = ""
+            parent_category: str = ''
             ) -> Iterator[Request]:
         """Парсим ссылки на подкатегории."""
         self.logger.info(
@@ -78,21 +78,21 @@ class ZenonSpider(BaseCompetitorSpider):
     def parse_product_list(
             self,
             response: Response,
-            parent_category: str = ""
+            parent_category: str = ''
             ) -> Iterator[Request]:
         """Парсим ссылки на товары в подкатегории."""
         current_category = self._extract_category(response)
 
         # Формируем полную категорию, включая родительскую
         if parent_category and current_category:
-            category = f"{parent_category} > {current_category}"
+            category = f'{parent_category} > {current_category}'
         elif parent_category:
             category = parent_category
         else:
             category = current_category
 
         self.logger.info(
-            f"Обрабатываем категорию: {category} ({response.url})"
+            f'Обрабатываем категорию: {category} ({response.url})'
             )
 
         product_list = response.css('div.content')
@@ -107,7 +107,7 @@ class ZenonSpider(BaseCompetitorSpider):
         self.logger.info(f'Найдено товаров: {len(product_links)}')
 
         for product_url in product_links:
-            self.logger.info(f"Отправляем на парсинг товар: {product_url}")
+            self.logger.info(f'Отправляем на парсинг товар: {product_url}')
             yield Request(
                 url=response.urljoin(product_url),
                 callback=self.parse_product,
@@ -127,10 +127,10 @@ class ZenonSpider(BaseCompetitorSpider):
     def parse_product(
             self,
             response: Response,
-            category: str = ""
+            category: str = ''
             ) -> Iterator[Dict[str, Any]]:
         """Парсим карточку товара."""
-        self.logger.info(f"Парсим карточку товара: {response.url}")
+        self.logger.info(f'Парсим карточку товара: {response.url}')
 
         try:
             product_card = response.css('div.cont_page')
@@ -149,13 +149,13 @@ class ZenonSpider(BaseCompetitorSpider):
                 currency = 'RUB'
             elif price_request:
                 price = 0.0  # Цена по запросу устанавливается как 0
-                self.logger.info(f"Цена по запросу для товара {product_code}")
+                self.logger.info(f'Цена по запросу для товара {product_code}')
             else:
                 price = 0.0
 
             # Получаем название товара
             name = product_card.css('h1.js_c1name::text').get()
-            name = self.clean_text(name) if name else ""
+            name = self.clean_text(name) if name else ''
 
             # Получаем единицу измерения
             unit = response.css(
@@ -190,7 +190,7 @@ class ZenonSpider(BaseCompetitorSpider):
             current_stock = response.css('div#phil_name_in_select::text').get()
             current_stock = self.clean_text(
                 current_stock
-                ) if current_stock else "Основной склад"
+                ) if current_stock else 'Основной склад'
 
             current_amount_raw = product_card.css(
                 'div.tovar_amount span.amount::attr(data-initial_amount)'
@@ -226,7 +226,7 @@ class ZenonSpider(BaseCompetitorSpider):
 
         except Exception as e:
             self.logger.error(
-                f"Ошибка при обработке товара {response.url}: {str(e)}"
+                f'Ошибка при обработке товара {response.url}: {str(e)}'
                 )
 
     def _extract_category(self, response: Response) -> str:
@@ -254,4 +254,4 @@ class ZenonSpider(BaseCompetitorSpider):
             if category_from_url:
                 return category_from_url
 
-        return ""
+        return ''

@@ -18,14 +18,14 @@ class ValidationPipeline:
         # Проверка обязательных полей
         for field in self.required_fields:
             if not item.get(field):
-                msg = f"Missing required field: {field}"
+                msg = f'Missing required field: {field}'
                 self.logger.warning(msg)
                 raise DropItem(msg)
 
         # Специальная проверка поля price
         price = item.get('price')
         if price is None:  # Только None считается отсутствующим
-            msg = "Missing required field: price"
+            msg = 'Missing required field: price'
             self.logger.warning(msg)
             raise DropItem(msg)
 
@@ -76,7 +76,7 @@ class ValidationPipeline:
             return float(value)
         except (ValueError, TypeError):
             self.logger.warning(
-                f"Invalid value for {key}: {value}, using default {default}"
+                f'Invalid value for {key}: {value}, using default {default}'
                 )
             return default
 
@@ -133,7 +133,7 @@ class ValidationPipeline:
             return int(float(value))
         except (ValueError, TypeError):
             self.logger.warning(
-                f"Invalid value for {key}: {value}, using default {default}"
+                f'Invalid value for {key}: {value}, using default {default}'
                 )
             return default
 

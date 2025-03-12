@@ -11,7 +11,7 @@ class PlaywrightJSONExporter(BaseExporter):
     def open_spider(self, spider):
         """Инициализация экспортера при старте паука."""
         self.items = []
-        self.logger.info(f"Инициализация JSON экспортера для {spider.name}")
+        self.logger.info(f'Инициализация JSON экспортера для {spider.name}')
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Обработка и сохранение item для последующей записи в JSON."""
@@ -31,11 +31,11 @@ class PlaywrightJSONExporter(BaseExporter):
 
             self.items.append(ordered_item)
             self.logger.info(
-                f"Товар {item.get('name', '')} добавлен в список для JSON"
+                f'Товар {item.get("name", "")} добавлен в список для JSON'
                 )
 
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке item для JSON: {str(e)}")
+            self.logger.error(f'Ошибка при обработке item для JSON: {str(e)}')
 
         return item
 
@@ -47,9 +47,9 @@ class PlaywrightJSONExporter(BaseExporter):
                 json.dump(self.items, f, ensure_ascii=False, indent=2)
 
             self.logger.info(
-                f"JSON файл {filename} успешно сохранен. "
-                f"Всего товаров: {len(self.items)}"
+                f'JSON файл {filename} успешно сохранен. '
+                f'Всего товаров: {len(self.items)}'
                 )
 
         except Exception as e:
-            self.logger.error(f"Ошибка при сохранении JSON: {str(e)}")
+            self.logger.error(f'Ошибка при сохранении JSON: {str(e)}')

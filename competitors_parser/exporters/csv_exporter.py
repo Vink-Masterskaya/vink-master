@@ -34,7 +34,7 @@ class CSVExporter(BaseExporter):
             delimiter=';'
         )
         self.exporters[spider].writeheader()
-        self.logger.info(f"Начало записи в файл: {filename}")
+        self.logger.info(f'Начало записи в файл: {filename}')
 
     def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
         """Обработка и запись item в CSV файл."""
@@ -44,7 +44,7 @@ class CSVExporter(BaseExporter):
             self.exporters[spider].writerow(csv_item)
 
         except Exception as e:
-            self.logger.error(f"Ошибка при записи в CSV: {str(e)}")
+            self.logger.error(f'Ошибка при записи в CSV: {str(e)}')
 
         return item
 
