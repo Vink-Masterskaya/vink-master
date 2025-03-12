@@ -163,6 +163,9 @@ class OracalSpider(BaseCompetitorSpider):
                 product_title = product.get('title', '')
                 product_id_1s = product.get('id_1s', '')
 
+                # Формирование URL для товара
+                product_url = f'https://www.oracal-online.ru/offer/{product_id}'
+
                 # Получаем цену и информацию о складах
                 price = self._get_price(product)
                 stocks = self._get_normalized_stocks(product)
@@ -196,6 +199,7 @@ class OracalSpider(BaseCompetitorSpider):
                     'width': width,
                     'length': length,
                     'height': None,
+                    'url': product_url,
                 }
                 time.sleep(0.5)
 
