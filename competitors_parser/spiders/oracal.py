@@ -163,11 +163,16 @@ class OracalSpider(BaseCompetitorSpider):
                 product_title = product.get('title', '')
                 product_id_1s = product.get('id_1s', '')
 
-                # Формирование URL для товара
+                # Формирование корректного URL для товара
                 product_url = f'https://www.oracal-online.ru/offer/{product_id}'
 
-                # Получаем цену и информацию о складах
-                price = self._get_price(product)
+                # Получаем основную единицу измерения товара
+                main_unit = product.get('unit', 'шт')
+
+                # Получаем цену для основной единицы измерения
+                main_price = self._get_price_for_unit(product, main_unit)
+
+                # Получаем информацию о складах
                 stocks = self._get_normalized_stocks(product)
 
                 # Получаем характеристики
@@ -191,9 +196,9 @@ class OracalSpider(BaseCompetitorSpider):
                     'category': cat,
                     'product_code': f'{product_id_1s}/{product_id}',
                     'name': product_title,
-                    'price': price,
+                    'price': main_price,
                     'stocks': stocks,
-                    'unit': product.get('unit', 'шт'),
+                    'unit': main_unit,
                     'currency': 'RUB',
                     'weight': weight,
                     'width': width,
@@ -208,50 +213,90 @@ class OracalSpider(BaseCompetitorSpider):
         except Exception as e:
             self.logger.error(f'Ошибка при обработке товара: {str(e)}')
 
-    def _get_price(self, product: Dict[str, Any]) -> float:
-        """Получение цены товара."""
+    def _get_price_for_unit(self, product: Dict[str, Any], unit: str) -> float:
+        """Получение цены товара для конкретной единицы измерения."""
         prices = product.get('prices', [])
 
-        if not prices:
-            return 0.0
+        # Ищем цену для заданной единицы измерения
+        for price_item in prices:
+            if price_item.get('unit') == unit:
+                try:
+                    return float(price_item.get('price', 0.0))
+                except (ValueError, TypeError):
+                    self.logger.warning(f'Ошибка преобразования цены для {unit}')
+                    return 0.0
 
-        main_price = prices[0].get('price', 0.0)
+        # Если не нашли подходящую цену, возвращаем первую доступную
+        if prices:
+            try:
+                return float(prices[0].get('price', 0.0))
+            except (ValueError, TypeError):
+                self.logger.warning('Ошибка преобразования цены')
+                return 0.0
 
-        try:
-            return float(main_price)
-        except (ValueError, TypeError):
-            self.logger.warning(f'Ошибка преобразования цены: {main_price}')
-            return 0.0
+        return 0.0
 
     def _get_normalized_stocks(
             self,
             product: Dict[str, Any]
             ) -> List[Dict[str, Any]]:
-        """Нормализация данных о складах."""
+        """Нормализация данных о складах с учетом разных цен по единицам измерения."""
         result = []
 
-        # Обрабатываем склады в Москве
-        moscow_rests = product.get('restsAvailable', [])
-        moscow_quantity = sum(rest.get('amount', 0) for rest in moscow_rests)
+        # Словарь для хранения информации о наличии по единицам измерения
+        units_quantity = {}
 
-        # Обрабатываем другие склады
-        other_rests = product.get('restsAllStore', [])
-        other_quantity = sum(rest.get('amount', 0) for rest in other_rests)
+        # Собираем информацию из restsAllStore (все склады)
+        all_stores = product.get('restsAllStore', [])
+        for store in all_stores:
+            unit_value = store.get('value', '')  # "rul", "pogm" и т.д.
+            unit_title = store.get('title', '')  # Человекочитаемое название, например "рул", "пог. м"
+            amount = store.get('amount', 0)
 
-        price = self._get_price(product)
+            # Добавляем в словарь для подсчета общего количества по единицам измерения
+            if unit_value not in units_quantity:
+                units_quantity[unit_value] = {
+                    'title': unit_title,
+                    'amount': amount
+                }
+            else:
+                units_quantity[unit_value]['amount'] += amount
 
-        # Добавляем московский склад
-        result.append({
-            'stock': 'Москва',
-            'quantity': moscow_quantity,
-            'price': price
-        })
+        # Формируем записи о наличии на складах
+        for unit_value, data in units_quantity.items():
+            # Получаем цену для данной единицы измерения
+            unit_price = self._get_price_for_unit(product, data['title'])
 
-        # Добавляем другие склады
-        result.append({
-            'stock': 'На других складах',
-            'quantity': other_quantity,
-            'price': price
-        })
+            result.append({
+                'stock': f"Все склады ({data['title']})",
+                'quantity': data['amount'],
+                'price': unit_price
+            })
+
+        # Если restsAvailable также содержит данные, добавляем отдельные записи для текущего города
+        available = product.get('restsAvailable', [])
+        for store in available:
+            unit_value = store.get('value', '')
+            unit_title = store.get('title', '')
+            amount = store.get('amount', 0)
+
+            # Получаем цену для данной единицы измерения
+            unit_price = self._get_price_for_unit(product, unit_title)
+
+            # Добавляем информацию о наличии в текущем городе
+            if amount > 0:
+                result.append({
+                    'stock': f"Текущий город ({unit_title})",
+                    'quantity': amount,
+                    'price': unit_price
+                })
+
+        # Если не удалось найти данные о наличии, добавляем пустую запись
+        if not result:
+            result.append({
+                'stock': 'Нет в наличии',
+                'quantity': 0,
+                'price': self._get_price_for_unit(product, product.get('unit', 'шт'))
+            })
 
         return result
