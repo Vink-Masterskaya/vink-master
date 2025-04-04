@@ -1,0 +1,2 @@
+THINGS = 'шт.'
+RUBLE = 'RUB'
